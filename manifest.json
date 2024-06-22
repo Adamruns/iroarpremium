@@ -1,0 +1,30 @@
+{
+    "manifest_version": 3,
+    "name": "Clemson Professor Info",
+    "version": "1.0",
+    "description": "Shows Rate My Professors and grade distribution data for Clemson University professors.",
+    "permissions": [
+      "activeTab",
+      "storage",
+      "https://www.ratemyprofessors.com/*",
+      "https://www.clemson.edu/*"
+    ],
+    "action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "16": "icons/icon.png",
+        "48": "icons/icon.png",
+        "128": "icons/icon.png"
+      }
+    },
+    "background": {
+      "service_worker": "background.js"
+    },
+    "content_scripts": [
+      {
+        "matches": ["https://www.clemson.edu/*"],
+        "js": ["content.js"]
+      }
+    ]
+  }
+  
