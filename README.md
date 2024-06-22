@@ -1,0 +1,1 @@
+The goal of this project is to be able to view rate my professors data and grade distribution data efficiently on the clemson class signup page to reduce the workflow and hassle needed to decide what class is best to take.
