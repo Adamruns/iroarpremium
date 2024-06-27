@@ -1,30 +1,35 @@
 {
     "manifest_version": 3,
-    "name": "Clemson Professor Info",
+    "name": "IRoar Premium",
     "version": "1.0",
     "description": "Shows Rate My Professors and grade distribution data for Clemson University professors.",
     "permissions": [
-      "activeTab",
-      "storage",
-      "https://www.ratemyprofessors.com/*",
-      "https://www.clemson.edu/*"
+        "activeTab",
+        "storage"
     ],
-    "action": {
-      "default_popup": "popup.html",
-      "default_icon": {
-        "16": "icons/icon.png",
-        "48": "icons/icon.png",
-        "128": "icons/icon.png"
-      }
-    },
+    "host_permissions": [
+        "https://www.ratemyprofessors.com/*",
+        "https://regssb.sis.clemson.edu/*"
+    ],
     "background": {
-      "service_worker": "background.js"
+        "service_worker": "background.js"
     },
+    "icons": {
+		"16": "./icons/icon.png",
+		"48": "./icons/icon.png",
+		"96": "./icons/icon.png",
+		"128": "./icons/icon.png"
+	},
     "content_scripts": [
-      {
-        "matches": ["https://www.clemson.edu/*"],
-        "js": ["content.js"]
-      }
+        {
+            "matches": ["https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/*"],
+            "js": ["content.js"]
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": ["popup.html"],
+            "matches": ["<all_urls>"]
+        }
     ]
-  }
-  
+}
