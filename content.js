@@ -3,18 +3,26 @@ console.log('Content script running');
 const style = document.createElement('link');
 style.rel = 'stylesheet';
 style.type = 'text/css';
-style.href = chrome.runtime.getURL('style.css');
+style.href = chrome.runtime.getURL('styles.css');
 document.head.appendChild(style);
 
+function removePrimary(cell) {
+    // Use a regular expression to remove "(Primary)" text followed by <br>
+    // I could be wrong but this looks unnecessary for most people
+    cell.innerHTML = cell.innerHTML.replace(/\s*\(Primary\)\s*<br>/, '');
+}
+
 function appendRMP() {
-    const professorLinks = document.querySelectorAll('.col-sm-3 a[href^="mailto:"], .instructor-row a.text-xsmall, td.instructor-name');
-    if (professorLinks.length > 0) {
-        professorLinks.forEach(async (link) => {
-            if (link.dataset.processed === "true") {
+    const professorCells = document.querySelectorAll('td[data-property="instructor"]');
+    if (professorCells.length > 0) {
+        professorCells.forEach((cell) => {
+            const link = cell.querySelector('a[href^="mailto:"]');
+            if (!link || link.dataset.processed === "true") {
                 return;
             }
             link.dataset.processed = "true";
-            
+        
+
             let professorName = link.textContent.trim();
             if (professorName.includes(',')) {
                 professorName = professorName.split(',').join(' ').trim();
@@ -38,6 +46,7 @@ function appendRMP() {
                         insertAvgDifficulty(link, avgDifficulty);
                         insertRating(link, avgRating);
                     }
+                    removePrimary(cell);
                 });
             } catch (error) {
                 console.error('Error:', error);

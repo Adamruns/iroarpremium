@@ -9,4 +9,7 @@
 .rating {
   margin-top: 7px;
   font-size: 12px;
+  word-wrap: break-word; /* For IE */
+  white-space: normal;   /* For other browsers */
+  overflow-wrap: break-word; /* For modern browsers */
 }
