@@ -1,88 +1,97 @@
-console.log('Content script has loaded');
+console.log('Content script running');
 
-// Function to show the popup
-function showPopup(event) {
-    // Create the popup container
-    const popup = document.createElement('div');
-    popup.id = 'professor-popup';
-    popup.style.position = 'absolute';
-    popup.style.backgroundColor = '#fff';
-    popup.style.border = '1px solid #ccc';
-    popup.style.padding = '10px';
-    popup.style.boxShadow = '0 0 10px rgba(0,0,0,0.1)';
-    popup.style.zIndex = '1000';
+const style = document.createElement('link');
+style.rel = 'stylesheet';
+style.type = 'text/css';
+style.href = chrome.runtime.getURL('style.css');
+document.head.appendChild(style);
 
-    // Position the popup
-    popup.style.top = `${event.clientY + window.scrollY + 10}px`;
-    popup.style.left = `${event.clientX + window.scrollX + 10}px`;
-
-    // Fetch the professor's name from the link text
-    const professorName = event.target.textContent;
-
-    // Fetch the popup.html content and insert it into the popup
-    fetch(chrome.runtime.getURL('popup.html'))
-        .then(response => response.text())
-        .then(data => {
-            // Create a temporary container to hold the fetched HTML
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = data;
-
-            // Insert the professor's name into the placeholder
-            const nameElement = tempDiv.querySelector('#professor-name');
-            if (nameElement) {
-                nameElement.textContent = professorName;
+function appendRMP() {
+    const professorLinks = document.querySelectorAll('.col-sm-3 a[href^="mailto:"], .instructor-row a.text-xsmall, td.instructor-name');
+    if (professorLinks.length > 0) {
+        professorLinks.forEach(async (link) => {
+            if (link.dataset.processed === "true") {
+                return;
             }
-
-            // Set the inner HTML of the popup to the modified content
-            popup.innerHTML = tempDiv.innerHTML;
-
-            // Add the popup to the document
-            document.body.appendChild(popup);
-
-            // Add event listeners to hide the popup when the mouse leaves the link or the popup
-            event.target.addEventListener('mouseleave', hidePopup);
-            popup.addEventListener('mouseleave', hidePopup);
-            popup.addEventListener('mouseenter', () => {
-                // Remove hidePopup listener from link while mouse is over popup
-                event.target.removeEventListener('mouseleave', hidePopup);
-            });
-            popup.addEventListener('mouseleave', () => {
-                // Add hidePopup listener back to link when mouse leaves popup
-                event.target.addEventListener('mouseleave', hidePopup);
-            });
-        })
-        .catch(error => console.error('Error loading popup.html:', error));
-}
-
-// Function to hide the popup
-function hidePopup() {
-    const existingPopup = document.getElementById('professor-popup');
-    if (existingPopup) {
-        document.body.removeChild(existingPopup);
+            link.dataset.processed = "true";
+            
+            let professorName = link.textContent.trim();
+            if (professorName.includes(',')) {
+                professorName = professorName.split(',').join(' ').trim();
+            }
+            try {
+                const port = chrome.runtime.connect({ name: 'professor-rating' });
+                port.postMessage({ professorName });
+                port.onMessage.addListener((teacher) => {
+                    if (teacher.error) {
+                        console.error('Error:', teacher.error);
+                        insertNoProfError(link, professorName);
+                    } else {
+                        const { avgRating, numRatings, avgDifficulty, wouldTakeAgainPercent, legacyId } = teacher;
+                        if (wouldTakeAgainPercent === -1) {
+                            console.error('Error: No ratings found for professor.');
+                            insertNoRatingsError(link, legacyId);
+                            return;
+                        }
+                        insertNumRatings(link, numRatings, legacyId);
+                        insertWouldTakeAgainPercent(link, wouldTakeAgainPercent);
+                        insertAvgDifficulty(link, avgDifficulty);
+                        insertRating(link, avgRating);
+                    }
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                insertNoProfError(link, professorName);
+            }
+        });
+    } else {
+        console.log('No professor links found.');
     }
 }
 
-// Initialize the script
-function initializeScript() {
-    const professorLinks = document.querySelectorAll('td[data-property="instructor"] a.email');
-    professorLinks.forEach(link => {
-        link.addEventListener('mouseenter', showPopup);
-    });
-}
+appendRMP();
 
-// This makes sure the script runs on places like plan page where content is not dynamically loaded
-window.onload = function() {
-    console.log("Window loaded completely");
-    initializeScript();
-};
-
-// This is for dynamically loaded content
 const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
-        if (mutation.type === 'childList') {
-            initializeScript();
+        if (mutation.addedNodes.length) {
+            appendRMP();
         }
     });
 });
 
 observer.observe(document.body, { childList: true, subtree: true });
+
+window.addEventListener('hashchange', appendRMP, false);
+
+function insertRating(link, avgRating) {
+    link.insertAdjacentHTML('afterend', `<div class="rating"><b>Rating:</b> ${avgRating}/5</div>`);
+}
+
+function insertAvgDifficulty(link, avgDifficulty) {
+    link.insertAdjacentHTML('afterend', `<div class="rating"><b>Difficulty:</b> ${avgDifficulty}/5</div>`);
+}
+
+function insertWouldTakeAgainPercent(link, wouldTakeAgainPercent) {
+    link.insertAdjacentHTML('afterend', `<div class="rating"><b>${Math.round(wouldTakeAgainPercent)}%</b> of students would take this professor again.</div>`);
+}
+
+function insertNumRatings(link, numRatings, legacyId) {
+    const profLink = `<a target="_blank" rel="noopener noreferrer" href='https://www.ratemyprofessors.com/professor?tid=${legacyId}'>${numRatings} ratings</a>`;
+    link.insertAdjacentHTML('afterend', `<div class="rating">${profLink}</div>`);
+}
+
+function insertNoRatingsError(link, legacyId) {
+    link.insertAdjacentHTML(
+        'afterend',
+        `<div class="rating"><b>Error:</b> this professor has <a target="_blank" rel="noopener noreferrer" href='https://www.ratemyprofessors.com/search/teachers?query=${legacyId}'>no ratings on RateMyProfessors.</a></div>`
+    );
+}
+
+function insertNoProfError(link, professorName) {
+    link.insertAdjacentHTML(
+        'afterend',
+        `<div class="rating"><b>Professor not found: </b><a target="_blank" rel="noopener noreferrer" href='https://www.ratemyprofessors.com/search/teachers?query=${encodeURIComponent(
+            professorName
+        )}'>Click to Search RMP</a></div>`
+    );
+}
