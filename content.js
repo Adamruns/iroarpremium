@@ -6,6 +6,7 @@ style.type = 'text/css';
 style.href = chrome.runtime.getURL('styles.css');
 document.head.appendChild(style);
 
+
 function removePrimary(cell) {
     // Use a regular expression to remove "(Primary)" text followed by <br>
     // I could be wrong but this looks unnecessary for most people

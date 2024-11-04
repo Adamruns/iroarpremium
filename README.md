@@ -14,6 +14,6 @@
 
 ### **Current Challenges**
 
-- **Implementing Grade Distributions**: Need to pull the info from the CSV or provide a external link to make it easy to see grade distributions alongside the professor ratings inside iroar. Also need to get the latest grade distirbutions downloaded into the repo.
+- **Implementing Grade Distributions**: Need to pull the info from the CSV or provide a external link to make it easy to see grade distributions alongside the professor ratings inside iroar. 
 
 By addressing these challenges and continuing to refine the extension, the goal is to make the class selection process as efficient and informed as possible for Clemson students.

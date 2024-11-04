@@ -28,7 +28,7 @@
     ],
     "web_accessible_resources": [
         {
-          "resources": ["styles.css"],
+          "resources": ["styles.css", "grade_distributions/*.csv"],
           "matches": ["<all_urls>"]
         }
     ]
