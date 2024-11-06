@@ -51,15 +51,25 @@ async function searchGradeDistributions(professorFirstName, professorLastName) {
 }
 
 // Listen for content script requests to fetch grade distributions
+// Listen for content script requests to fetch grade distributions
 chrome.runtime.onConnect.addListener((port) => {
     port.onMessage.addListener(async (request) => {
         if (request.type === 'gradeDistribution') {
             const { firstName, lastName } = request.professor;
+
+            // Check for valid firstName and lastName
+            if (!firstName || !lastName) {
+                console.warn("Invalid professor name received. First or last name is missing:", request.professor);
+                port.postMessage({ type: 'gradeDistribution', data: [] }); // Send empty data
+                return;
+            }
+
             const results = await searchGradeDistributions(firstName, lastName);
             port.postMessage({ type: 'gradeDistribution', data: results });
         }
     });
 });
+
 
 const searchProfessor = async (name, schoolID) => {
 	console.log('Searching for professor:', name);
@@ -163,32 +173,36 @@ const getProfessor = async (id) => {
 };
 
 async function sendProfessorInfo(professorName) {
-	const normalizedName = professorName.normalize('NFKD');
-	try {
-		// for each in SCHOOL_ID, search for professor
-		// if found, get professor info, if not found, continue
-		let professorID;
-		for (let i = 0; i < SCHOOL_ID.length; i++) {
-			const professors = await searchProfessor(normalizedName, SCHOOL_ID[i]);
-			if (professors.length === 0) {
-				// console.log('No ' + professorName + ' found at RMP for schoolID:', SCHOOL_ID[i] + ', continuing to next SchoolID');
-				continue;
-			}
-			professorID = professors[0].id;
-			console.log('SUCCESS! ' + professorName + ' professorID: ' + professorID + ' found at schoolID: ' + SCHOOL_ID[i]);
-			break;
-		}
-		if (professorID === undefined) {
-			console.log('No ' + professorName + ' found for any schoolID:', SCHOOL_ID);
-			return { error: professorName + ' not found on RMP for any given SCHOOL_ID' };
-		}
-		const professor = await getProfessor(professorID);
-		console.log(professor);
-		return professor;
-	} catch (error) {
-		console.error('Error sending professor info for ' + professorName, error);
-		throw error;
-	}
+    // Check if professorName is a valid string before normalizing
+    if (typeof professorName !== 'string') {
+		// Small bug. Right now this is happening whenever
+		// the grade distribution popup is being called
+        return { error: 'Invalid professor name provided.' };
+    }
+
+    const normalizedName = professorName.normalize('NFKD');
+    try {
+        let professorID;
+        for (let i = 0; i < SCHOOL_ID.length; i++) {
+            const professors = await searchProfessor(normalizedName, SCHOOL_ID[i]);
+            if (professors.length === 0) {
+                continue;
+            }
+            professorID = professors[0].id;
+            console.log('SUCCESS! ' + professorName + ' professorID: ' + professorID + ' found at schoolID: ' + SCHOOL_ID[i]);
+            break;
+        }
+        if (professorID === undefined) {
+            console.log('No ' + professorName + ' found for any schoolID:', SCHOOL_ID);
+            return { error: professorName + ' not found on RMP for any given SCHOOL_ID' };
+        }
+        const professor = await getProfessor(professorID);
+        console.log(professor);
+        return professor;
+    } catch (error) {
+        console.error('Error sending professor info for ' + professorName, error);
+        throw error;
+    }
 }
 
 chrome.runtime.onConnect.addListener((port) => {

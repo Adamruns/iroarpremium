@@ -13,6 +13,7 @@ function removePrimary(cell) {
 
 function appendRMP() {
     const professorCells = document.querySelectorAll('td[data-property="instructor"]');
+
     if (professorCells.length > 0) {
         professorCells.forEach((cell) => {
             const link = cell.querySelector('a[href^="mailto:"]');
@@ -24,6 +25,12 @@ function appendRMP() {
             let professorName = link.textContent.trim();
             if (professorName.includes(',')) {
                 professorName = professorName.split(',').join(' ').trim();
+            }
+
+            // Skip if professorName is empty or undefined
+            if (!professorName) {
+                console.warn("Skipped undefined or empty professor name");
+                return;
             }
 
             // Debugging: Log professor name and cell
@@ -128,8 +135,15 @@ function insertGradeDistributionLink(link, professorName) {
 
 
 // Function to fetch grade distribution data from background.js
+// Function to fetch grade distribution data from background.js
 function fetchGradeDistribution(professorName) {
-    const [firstName, lastName] = professorName.split(' '); // Assuming name format "First Last"
+    const nameParts = professorName.split(' ');
+    if (nameParts.length < 2) {
+        console.error("Invalid professor name format. Expected 'First Last'. Received:", professorName);
+        return Promise.resolve([]); // Return an empty result to avoid further errors
+    }
+
+    const [firstName, lastName] = nameParts; // Assuming name format "First Last"
     const port = chrome.runtime.connect({ name: 'grade-distribution' });
 
     return new Promise((resolve) => {
