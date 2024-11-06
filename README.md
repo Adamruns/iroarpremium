@@ -4,7 +4,7 @@ IRoar Premium is a Chrome extension that enhances the Clemson class signup page 
 
 ## **Features**
 
-- **Integrated Professor Ratings**: Automatically displays ratings, average difficulty, number of ratings, and percentage of students who would take the professor again, directly from Rate My Professors.
+- **Integrated Professor Ratings**: Automatically displays ratings, average difficulty, number of ratings, and percentage of students who would take the professor again, directly from Rate My Professors using GraphQL API.
 - **Grade Distribution Data**: Shows detailed grade distributions for each professor, sourced from Clemson's grade distribution CSVs.
 - **Simplified Interface**: The extension cleans up unnecessary text and formats data to fit seamlessly within the iRoar interface, ensuring a smooth user experience even on smaller screens.
 
@@ -14,9 +14,10 @@ IRoar Premium is a Chrome extension that enhances the Clemson class signup page 
 
 1. **Chrome Extension Icon**: Designed a unique icon for IRoar Premium using GPT-4, enhancing the extension’s branding and visibility in the browser.
 2. **Data Extraction**: Requested up-to-date grade distribution data from Clemson’s Office of Institutional Research to ensure accurate information for users.
-3. **Data Cleansing**: Updated and standardized the CSV files to ensure consistent headers across different semesters and years, enabling smoother data parsing.
-4. **Debugging and Testing**: Tested the extension thoroughly by loading it unpacked in Chrome’s Developer Mode and debugging using the Chrome Web Developer Tools.
+3. **Data Cleansing**: Updated and standardized the CSV files using Python scripts to ensure consistent headers across different semesters and years, enabling smoother data parsing.
+4. **Debugging and Testing**: Tested the extension by loading it unpacked in Chrome’s Developer Mode and debugging using the Chrome Web Developer Tools.
 5. **UI Optimization**: Styled the extension’s interface to ensure data wraps appropriately and doesn’t overflow, even on smaller screens, providing a clean and readable display.
+
 
 ### **Data Integration and Display**
 
