@@ -9,11 +9,28 @@ IRoar Premium is a Chrome extension that enhances the Clemson class signup page 
    - Open Chrome and navigate to `chrome://extensions/`.
    - Enable **Developer mode** (toggle in the top right).
    - Click **Load unpacked** and select the folder containing the extension files.
+
 2. **Navigate to Clemson's Signup Page**: Visit the [Clemson Registration Page](https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/prepareRegistration/prepareRegistration). The extension will automatically activate on the class signup page, displaying professor ratings and grade distributions directly within the interface.
 
 > **Important Notes**:  
 > - This extension has been primarily tested with the **Plan Ahead tool** and has not been verified to work during the actual registration process. Use caution and remember you can always disable the extension via the `chrome://extensions` page if needed.
 > - This extension has not been extensively tested across all possible use cases. If you encounter any bugs or issues, feel free to submit a pull request or open an issue. Contributions are welcome!
+
+## **Before and After Comparison**
+
+Here’s how the Clemson Plan Ahead tool looks with and without the IRoar Premium extension:
+
+### **Without IRoar Premium:**
+
+![Plan Ahead without IRoar Premium](images/no_extension.png)
+
+### **With IRoar Premium (No Popup):**
+
+![Plan Ahead with IRoar Premium (No Popup)](images/with_extension_no_window.png)
+
+### **With IRoar Premium (Popup with Grade Distribution):**
+
+![Plan Ahead with IRoar Premium (Popup with Grade Distribution)](images/with_extension_window.png)
 
 ## **Features**
 
@@ -44,4 +61,4 @@ The next major step for IRoar Premium is to get it approved on the **Chrome Web 
 
 If you notice any bugs or potential improvements, please consider contributing! Fork the repository, make your changes, and submit a pull request with a clear description of the enhancement or fix.
 
-
+---
