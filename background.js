@@ -4,6 +4,62 @@
 const AUTH_TOKEN = 'dGVzdDp0ZXN0';
 const SCHOOL_ID = ['U2Nob29sLTI0Mg=='];
 
+// List of grade distribution CSV files within the extension
+const gradeDistributionFiles = [
+    'grade_distributions_final/2013Fall.csv', 'grade_distributions_final/2014Fall.csv',
+	'grade_distributions_final/2014Spring.csv', 'grade_distributions_final/2015Fall.csv',
+	'grade_distributions_final/2015Spring.csv', 'grade_distributions_final/2016Fall.csv',
+	'grade_distributions_final/2016Spring.csv', 'grade_distributions_final/2017Fall.csv',
+	'grade_distributions_final/2018Spring.csv', 'grade_distributions_final/2018Fall.csv',
+	'grade_distributions_final/2019Spring.csv', 'grade_distributions_final/2019Fall.csv',
+	'grade_distributions_final/2020Spring.csv', 'grade_distributions_final/2020Fall.csv',
+	'grade_distributions_final/2021Spring.csv', 'grade_distributions_final/2021Fall.csv',
+	'grade_distributions_final/2022Spring.csv', 'grade_distributions_final/2022Fall.csv',
+	'grade_distributions_final/2023Spring.csv', 'grade_distributions_final/2023Fall.csv',
+	'grade_distributions_final/2024Spring.csv', 'grade_distributions_final/2017Spring.csv',
+];
+
+// Parse CSV data into a usable format
+async function parseCSV(text) {
+    return text.trim().split('\n').map(row => row.split(',').map(value => value.trim()));
+}
+
+// Load and search CSVs for grade distribution by professor
+async function searchGradeDistributions(professorFirstName, professorLastName) {
+    const results = [];
+
+    for (const file of gradeDistributionFiles) {
+        const fileURL = chrome.runtime.getURL(file);
+        const response = await fetch(fileURL);
+        const csvText = await response.text();
+        const rows = await parseCSV(csvText);
+
+        // Extract year and semester from filename
+        const year = file.match(/\d{4}/)[0];
+        const semester = file.includes('Fall') ? 'Fall' : 'Spring';
+
+        // Search rows for professor name
+        for (const row of rows) {
+            const rowString = row.join(' ').toLowerCase();
+            if (rowString.includes(professorFirstName.toLowerCase()) && rowString.includes(professorLastName.toLowerCase())) {
+                results.push({ year, semester, data: row });
+            }
+        }
+    }
+
+    return results;
+}
+
+// Listen for content script requests to fetch grade distributions
+chrome.runtime.onConnect.addListener((port) => {
+    port.onMessage.addListener(async (request) => {
+        if (request.type === 'gradeDistribution') {
+            const { firstName, lastName } = request.professor;
+            const results = await searchGradeDistributions(firstName, lastName);
+            port.postMessage({ type: 'gradeDistribution', data: results });
+        }
+    });
+});
 
 const searchProfessor = async (name, schoolID) => {
 	console.log('Searching for professor:', name);

@@ -1,15 +1,13 @@
 console.log('Content script running');
 
+// Inject CSS
 const style = document.createElement('link');
 style.rel = 'stylesheet';
 style.type = 'text/css';
 style.href = chrome.runtime.getURL('styles.css');
 document.head.appendChild(style);
 
-
 function removePrimary(cell) {
-    // Use a regular expression to remove "(Primary)" text followed by <br>
-    // I could be wrong but this looks unnecessary for most people
     cell.innerHTML = cell.innerHTML.replace(/\s*\(Primary\)\s*<br>/, '');
 }
 
@@ -22,12 +20,15 @@ function appendRMP() {
                 return;
             }
             link.dataset.processed = "true";
-        
 
             let professorName = link.textContent.trim();
             if (professorName.includes(',')) {
                 professorName = professorName.split(',').join(' ').trim();
             }
+
+            // Debugging: Log professor name and cell
+            console.log(`Processing professor: ${professorName}`, cell);
+
             try {
                 const port = chrome.runtime.connect({ name: 'professor-rating' });
                 port.postMessage({ professorName });
@@ -46,6 +47,7 @@ function appendRMP() {
                         insertWouldTakeAgainPercent(link, wouldTakeAgainPercent);
                         insertAvgDifficulty(link, avgDifficulty);
                         insertRating(link, avgRating);
+                        insertGradeDistributionLink(link, professorName);  // Add clickable text here
                     }
                     removePrimary(cell);
                 });
@@ -64,11 +66,10 @@ appendRMP();
 const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
         if (mutation.addedNodes.length) {
-            appendRMP();
+            setTimeout(appendRMP, 100); // Small delay to ensure elements are loaded
         }
     });
 });
-
 observer.observe(document.body, { childList: true, subtree: true });
 
 window.addEventListener('hashchange', appendRMP, false);
@@ -105,3 +106,103 @@ function insertNoProfError(link, professorName) {
         )}'>Click to Search RMP</a></div>`
     );
 }
+
+// Function to add "Grade Distribution" clickable text under RMP data
+function insertGradeDistributionLink(link, professorName) {
+    if (link.nextElementSibling && link.nextElementSibling.classList.contains('grade-distribution-link')) {
+        return;
+    }
+
+    const gradeLink = document.createElement('div');
+    gradeLink.classList.add('grade-distribution-link');
+    gradeLink.textContent = 'Grade Distribution';
+    gradeLink.style.cursor = 'pointer';
+
+    // Add a custom data attribute to hold the professor's name
+    gradeLink.setAttribute('data-professor', professorName);
+
+    console.log('Grade Distribution link added for:', professorName);
+
+    link.insertAdjacentElement('afterend', gradeLink);
+}
+
+
+// Function to fetch grade distribution data from background.js
+function fetchGradeDistribution(professorName) {
+    const [firstName, lastName] = professorName.split(' '); // Assuming name format "First Last"
+    const port = chrome.runtime.connect({ name: 'grade-distribution' });
+
+    return new Promise((resolve) => {
+        port.postMessage({ type: 'gradeDistribution', professor: { firstName, lastName } });
+
+        port.onMessage.addListener((response) => {
+            if (response.type === 'gradeDistribution') {
+                resolve(response.data);
+            }
+        });
+    });
+}
+
+// Update popup content with grade distribution data
+// Update popup content with grade distribution data
+async function openGradePopup(professorName) {
+    console.log('openGradePopup function called for', professorName);
+
+    const gradeData = await fetchGradeDistribution(professorName);
+
+    let popup = document.querySelector('.grade-distribution-popup');
+    if (!popup) {
+        popup = document.createElement('div');
+        popup.className = 'grade-distribution-popup';
+        popup.innerHTML = `
+            <div class="grade-popup-header">
+                <span class="grade-popup-title">Grade Distribution for ${professorName}</span>
+                <button class="grade-popup-close">&times;</button>
+            </div>
+            <div class="grade-popup-content"></div>
+        `;
+        document.body.appendChild(popup);
+
+        popup.querySelector('.grade-popup-close').addEventListener('click', () => {
+            popup.style.display = 'none';
+        });
+    } else {
+        popup.querySelector('.grade-popup-title').textContent = `Grade Distribution for ${professorName}`;
+    }
+
+    const content = popup.querySelector('.grade-popup-content');
+
+    // Labels for each grade column
+    const gradeLabels = ['A', 'B', 'C', 'D', 'F', 'P', 'F(P)', 'W', 'I'];
+
+    // Reverse the data to display newest first
+    const reversedData = gradeData.reverse();
+
+    // Format grade distribution with labels
+    content.innerHTML = reversedData.length > 0 ? reversedData.map((entry) => {
+        const row = entry.data;
+        // Map the grade percentages with their labels
+        const gradeDistribution = row.slice(4, 13).map((value, index) => {
+            const rawValue = value.replace('%', '').trim(); // Ensure value is clean of any existing '%'
+            return `${rawValue}% (${gradeLabels[index]})`;
+        }).join(', ');
+
+        return `
+            <p><b>Year:</b> ${entry.year}, <b>Semester:</b> ${entry.semester}</p>
+            <p><b>Course:</b> ${row[0]} ${row[1]} ${row[2]}, ${row[3]}</p>
+            <p><b>Distribution:</b> ${gradeDistribution}</p>
+            <hr>
+        `;
+    }).join('') : '<p>No grade distribution data found for this professor.</p>';
+
+    popup.style.display = 'block';
+    popup.style.zIndex = '10000'; // Ensure it's on top
+}
+
+// Event delegation to handle clicks on Grade Distribution links
+document.body.addEventListener('click', (event) => {
+    if (event.target.classList.contains('grade-distribution-link')) {
+        const professorName = event.target.getAttribute('data-professor');
+        openGradePopup(professorName);
+    }
+});
