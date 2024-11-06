@@ -1,5 +1,3 @@
-console.log('Content script running');
-
 // Inject CSS
 const style = document.createElement('link');
 style.rel = 'stylesheet';
@@ -33,8 +31,6 @@ function appendRMP() {
                 return;
             }
 
-            // Debugging: Log professor name and cell
-            console.log(`Processing professor: ${professorName}`, cell);
 
             try {
                 const port = chrome.runtime.connect({ name: 'professor-rating' });
@@ -64,7 +60,6 @@ function appendRMP() {
             }
         });
     } else {
-        console.log('No professor links found.');
     }
 }
 
@@ -128,8 +123,6 @@ function insertGradeDistributionLink(link, professorName) {
     // Add a custom data attribute to hold the professor's name
     gradeLink.setAttribute('data-professor', professorName);
 
-    console.log('Grade Distribution link added for:', professorName);
-
     link.insertAdjacentElement('afterend', gradeLink);
 }
 
@@ -160,7 +153,6 @@ function fetchGradeDistribution(professorName) {
 // Update popup content with grade distribution data
 // Update popup content with grade distribution data
 async function openGradePopup(professorName) {
-    console.log('openGradePopup function called for', professorName);
 
     const gradeData = await fetchGradeDistribution(professorName);
 
