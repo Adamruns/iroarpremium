@@ -2,9 +2,22 @@
 
 IRoar Premium is a Chrome extension that enhances the Clemson class signup page by integrating valuable data about professors and grade distributions directly within the page. This extension simplifies the class selection process by displaying Rate My Professors ratings and historical grade distribution data for each professor, allowing students to make more informed decisions at a glance.
 
+## **Usage Instructions**
+
+1. **Load the Extension**: 
+   - Clone or download this repository.
+   - Open Chrome and navigate to `chrome://extensions/`.
+   - Enable **Developer mode** (toggle in the top right).
+   - Click **Load unpacked** and select the folder containing the extension files.
+2. **Navigate to Clemson's Signup Page**: Visit the [Clemson Registration Page](https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/prepareRegistration/prepareRegistration). The extension will automatically activate on the class signup page, displaying professor ratings and grade distributions directly within the interface.
+
+> **Important Notes**:  
+> - This extension has been primarily tested with the **Plan Ahead tool** and has not been verified to work during the actual registration process. Use caution and remember you can always disable the extension via the `chrome://extensions` page if needed.
+> - This extension has not been extensively tested across all possible use cases. If you encounter any bugs or issues, feel free to submit a pull request or open an issue. Contributions are welcome!
+
 ## **Features**
 
-- **Integrated Professor Ratings**: Automatically displays ratings, average difficulty, number of ratings, and percentage of students who would take the professor again, directly from Rate My Professors using GraphQL API.
+- **Integrated Professor Ratings**: Automatically displays ratings, average difficulty, number of ratings, and percentage of students who would take the professor again, directly from Rate My Professors using the GraphQL API.
 - **Grade Distribution Data**: Shows detailed grade distributions for each professor, sourced from Clemson's grade distribution CSVs.
 - **Simplified Interface**: The extension cleans up unnecessary text and formats data to fit seamlessly within the iRoar interface, ensuring a smooth user experience even on smaller screens.
 
@@ -18,22 +31,14 @@ IRoar Premium is a Chrome extension that enhances the Clemson class signup page 
 4. **Debugging and Testing**: Tested the extension by loading it unpacked in Chrome’s Developer Mode and debugging using the Chrome Web Developer Tools.
 5. **UI Optimization**: Styled the extension’s interface to ensure data wraps appropriately and doesn’t overflow, even on smaller screens, providing a clean and readable display.
 
-
 ### **Data Integration and Display**
 
 - **Grade Distributions**: Implemented CSV parsing and display functionality to show grade distribution percentages next to each professor’s rating. Reformatted the data for consistency and readability, ensuring a smooth display on the Clemson signup page.
 - **Consistency Checks**: Manually edited some CSV files to correct header mismatches across datasets, ensuring that all data fields align correctly when displayed.
 
-## **Usage Instructions**
+## **Next Steps**
 
-1. **Load the Extension**: 
-   - Clone or download this repository.
-   - Open Chrome and navigate to `chrome://extensions/`.
-   - Enable **Developer mode** (toggle in the top right).
-   - Click **Load unpacked** and select the folder containing the extension files.
-2. **Navigate to Clemson's Signup Page**: The extension will automatically activate on the class signup page, displaying professor ratings and grade distributions directly within the interface.
-
-> **Note**: This extension has not been extensively tested across all possible use cases. If you encounter any bugs or issues, feel free to submit a pull request or open an issue. Contributions are welcome!
+The next major step for IRoar Premium is to get it approved on the **Chrome Web Store** for easier download and installation. This will allow users to install the extension directly from the Web Store rather than loading it manually.
 
 ## **Contributing**
 
