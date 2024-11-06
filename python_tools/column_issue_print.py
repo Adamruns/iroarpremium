@@ -18,5 +18,5 @@ def print_rows_with_13_columns(file_path):
 
 
 # Specify the path to the specific file
-file_path = 'grade_distributions_revised/2023Fall.csv'  # Update the path if necessary
+file_path = '../grade_distributions_revised/2023Fall.csv'  # Update the path if necessary
 print_rows_with_13_columns(file_path)

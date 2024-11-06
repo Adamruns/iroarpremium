@@ -30,5 +30,5 @@ def analyze_csv_columns(directory):
 
 
 # Usage
-directory_path = 'grade_distributions_final'  # Replace with your directory containing CSV files
+directory_path = '../grade_distributions_final'  # Replace with your directory containing CSV files
 analyze_csv_columns(directory_path)

@@ -26,7 +26,7 @@ def expand_to_17_columns(input_file, output_file):
 
 
 # Usage
-input_file = 'grade_distributions_revised/2023Fall.csv'  # Path to the original CSV file with 14 columns
-output_file = 'grade_distributions_final/2023Fall.csv'  # Path to save the revised CSV file
+input_file = '../grade_distributions_revised/2023Fall.csv'  # Path to the original CSV file with 14 columns
+output_file = '../grade_distributions_final/2023Fall.csv'  # Path to save the revised CSV file
 
 expand_to_17_columns(input_file, output_file)
