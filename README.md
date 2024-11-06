@@ -44,6 +44,4 @@ The next major step for IRoar Premium is to get it approved on the **Chrome Web 
 
 If you notice any bugs or potential improvements, please consider contributing! Fork the repository, make your changes, and submit a pull request with a clear description of the enhancement or fix.
 
----
 
-By consolidating essential data about professors and course performance, IRoar Premium makes Clemson’s class signup process more informative and user-friendly, helping students make better-informed decisions about their course selections.
