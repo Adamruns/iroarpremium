@@ -1,19 +1,43 @@
-## **IRoar Premium**
+# **IRoar Premium**
 
-### **Objectives**
+IRoar Premium is a Chrome extension that enhances the Clemson class signup page by integrating valuable data about professors and grade distributions directly within the page. This extension simplifies the class selection process by displaying Rate My Professors ratings and historical grade distribution data for each professor, allowing students to make more informed decisions at a glance.
 
-- **Streamline Access to Professor and Grade Data**: Integrate Rate My Professors data and grade distribution information into the Clemson class signup page.
-- **Reduce Workflow Hassles**: Simplify the process of deciding which classes to take by providing critical data directly on the signup page.
+## **Features**
 
-### **Accomplishments**
+- **Integrated Professor Ratings**: Automatically displays ratings, average difficulty, number of ratings, and percentage of students who would take the professor again, directly from Rate My Professors.
+- **Grade Distribution Data**: Shows detailed grade distributions for each professor, sourced from Clemson's grade distribution CSVs.
+- **Simplified Interface**: The extension cleans up unnecessary text and formats data to fit seamlessly within the iRoar interface, ensuring a smooth user experience even on smaller screens.
 
-- **Created a Chrome Extension Icon**: Utilized GPT-4 to design an icon for the Chrome extension.
-- **Data Extraction**: Sent a data inquiry to the Office of Institutional Research to get the latest grade distribution reports posted properly with download capabilities.
-- **Debugging and Testing**: Practiced debugging the Chrome extension by loading it unpacked and utilizing the Chrome Web Developer Tools console.
-- **Prettify**: Removed some text I deemed unnecessary from the teacher listings and also added css styling to the div that contained that text to make sure my ratings and such would wrap instead of overflowing even on a smaller screen.
+## **Development Highlights**
 
-### **Current Challenges**
+### **Project Workflow**
 
-- **Implementing Grade Distributions**: Need to pull the info from the CSV or provide a external link to make it easy to see grade distributions alongside the professor ratings inside iroar. 
+1. **Chrome Extension Icon**: Designed a unique icon for IRoar Premium using GPT-4, enhancing the extension’s branding and visibility in the browser.
+2. **Data Extraction**: Requested up-to-date grade distribution data from Clemson’s Office of Institutional Research to ensure accurate information for users.
+3. **Data Cleansing**: Updated and standardized the CSV files to ensure consistent headers across different semesters and years, enabling smoother data parsing.
+4. **Debugging and Testing**: Tested the extension thoroughly by loading it unpacked in Chrome’s Developer Mode and debugging using the Chrome Web Developer Tools.
+5. **UI Optimization**: Styled the extension’s interface to ensure data wraps appropriately and doesn’t overflow, even on smaller screens, providing a clean and readable display.
 
-By addressing these challenges and continuing to refine the extension, the goal is to make the class selection process as efficient and informed as possible for Clemson students.
+### **Data Integration and Display**
+
+- **Grade Distributions**: Implemented CSV parsing and display functionality to show grade distribution percentages next to each professor’s rating. Reformatted the data for consistency and readability, ensuring a smooth display on the Clemson signup page.
+- **Consistency Checks**: Manually edited some CSV files to correct header mismatches across datasets, ensuring that all data fields align correctly when displayed.
+
+## **Usage Instructions**
+
+1. **Load the Extension**: 
+   - Clone or download this repository.
+   - Open Chrome and navigate to `chrome://extensions/`.
+   - Enable **Developer mode** (toggle in the top right).
+   - Click **Load unpacked** and select the folder containing the extension files.
+2. **Navigate to Clemson's Signup Page**: The extension will automatically activate on the class signup page, displaying professor ratings and grade distributions directly within the interface.
+
+> **Note**: This extension has not been extensively tested across all possible use cases. If you encounter any bugs or issues, feel free to submit a pull request or open an issue. Contributions are welcome!
+
+## **Contributing**
+
+If you notice any bugs or potential improvements, please consider contributing! Fork the repository, make your changes, and submit a pull request with a clear description of the enhancement or fix.
+
+---
+
+By consolidating essential data about professors and course performance, IRoar Premium makes Clemson’s class signup process more informative and user-friendly, helping students make better-informed decisions about their course selections.
