@@ -15,11 +15,11 @@
         "service_worker": "background.js"
     },
     "icons": {
-		"16": "./icons/icon.png",
-		"48": "./icons/icon.png",
-		"96": "./icons/icon.png",
-		"128": "./icons/icon.png"
-	},
+        "16": "icons/icon.png",
+        "48": "icons/icon.png",
+        "96": "icons/icon.png",
+        "128": "icons/icon.png"
+    },
     "content_scripts": [
         {
             "matches": ["https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/*"],
@@ -28,7 +28,7 @@
     ],
     "web_accessible_resources": [
         {
-          "resources": ["styles.css", "grade_distributions/*.csv"],
+          "resources": ["styles.css", "grade_distributions_final/*.csv"],
           "matches": ["<all_urls>"]
         }
     ]
