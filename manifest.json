@@ -4,8 +4,6 @@
     "version": "1.0",
     "description": "Shows Rate My Professors and grade distribution data for Clemson University professors.",
     "permissions": [
-        "activeTab",
-        "storage"
     ],
     "host_permissions": [
         "https://www.ratemyprofessors.com/*",
