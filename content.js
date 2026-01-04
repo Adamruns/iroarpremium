@@ -22,7 +22,8 @@ function appendRMP() {
 
             let professorName = link.textContent.trim();
             if (professorName.includes(',')) {
-                professorName = professorName.split(',').join(' ').trim();
+                const parts = professorName.split(',');
+                professorName = `${parts[1].trim()} ${parts[0].trim()}`;
             }
 
             // Skip if professorName is empty or undefined
@@ -111,7 +112,9 @@ function insertNoProfError(link, professorName) {
 
 // Function to add "Grade Distribution" clickable text under RMP data
 function insertGradeDistributionLink(link, professorName) {
-    if (link.nextElementSibling && link.nextElementSibling.classList.contains('grade-distribution-link')) {
+    // Check parent cell for existing grade-distribution-link to prevent duplicates
+    const parentCell = link.closest('td');
+    if (parentCell && parentCell.querySelector('.grade-distribution-link')) {
         return;
     }
 
@@ -128,7 +131,6 @@ function insertGradeDistributionLink(link, professorName) {
 
 
 // Function to fetch grade distribution data from background.js
-// Function to fetch grade distribution data from background.js
 function fetchGradeDistribution(professorName) {
     const nameParts = professorName.split(' ');
     if (nameParts.length < 2) {
@@ -136,7 +138,8 @@ function fetchGradeDistribution(professorName) {
         return Promise.resolve([]); // Return an empty result to avoid further errors
     }
 
-    const [firstName, lastName] = nameParts; // Assuming name format "First Last"
+    const firstName = nameParts[0];
+    const lastName = nameParts[nameParts.length - 1]; // Handle middle names by taking last part
     const port = chrome.runtime.connect({ name: 'grade-distribution' });
 
     return new Promise((resolve) => {
@@ -150,7 +153,6 @@ function fetchGradeDistribution(professorName) {
     });
 }
 
-// Update popup content with grade distribution data
 // Update popup content with grade distribution data
 async function openGradePopup(professorName) {
 
@@ -181,8 +183,8 @@ async function openGradePopup(professorName) {
     // Labels for each grade column
     const gradeLabels = ['A', 'B', 'C', 'D', 'F', 'P', 'F(P)', 'W', 'I'];
 
-    // Reverse the data to display newest first
-    const reversedData = gradeData.reverse();
+    // Reverse the data to display newest first (use spread to avoid mutating original)
+    const reversedData = [...gradeData].reverse();
 
     // Format grade distribution with labels
     content.innerHTML = reversedData.length > 0 ? reversedData.map((entry) => {

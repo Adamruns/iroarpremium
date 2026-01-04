@@ -19,9 +19,47 @@ const gradeDistributionFiles = [
 	'grade_distributions_final/2024Spring.csv', 'grade_distributions_final/2017Spring.csv',
 ];
 
-// Parse CSV data into a usable format
-async function parseCSV(text) {
-    return text.trim().split('\n').map(row => row.split(',').map(value => value.trim()));
+// Parse CSV data into a usable format (handles quoted fields with commas)
+function parseCSV(text) {
+    const rows = [];
+    const lines = text.trim().split('\n');
+
+    for (const line of lines) {
+        const row = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+
+            if (inQuotes) {
+                if (char === '"') {
+                    // Check for escaped quote ("")
+                    if (line[i + 1] === '"') {
+                        current += '"';
+                        i++; // Skip next quote
+                    } else {
+                        inQuotes = false;
+                    }
+                } else {
+                    current += char;
+                }
+            } else {
+                if (char === '"') {
+                    inQuotes = true;
+                } else if (char === ',') {
+                    row.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+        }
+        row.push(current.trim()); // Push last field
+        rows.push(row);
+    }
+
+    return rows;
 }
 
 // Load and search CSVs for grade distribution by professor
@@ -32,7 +70,7 @@ async function searchGradeDistributions(professorFirstName, professorLastName) {
         const fileURL = chrome.runtime.getURL(file);
         const response = await fetch(fileURL);
         const csvText = await response.text();
-        const rows = await parseCSV(csvText);
+        const rows = parseCSV(csvText);
 
         // Extract year and semester from filename
         const year = file.match(/\d{4}/)[0];
@@ -50,25 +88,6 @@ async function searchGradeDistributions(professorFirstName, professorLastName) {
     return results;
 }
 
-// Listen for content script requests to fetch grade distributions
-// Listen for content script requests to fetch grade distributions
-chrome.runtime.onConnect.addListener((port) => {
-    port.onMessage.addListener(async (request) => {
-        if (request.type === 'gradeDistribution') {
-            const { firstName, lastName } = request.professor;
-
-            // Check for valid firstName and lastName
-            if (!firstName || !lastName) {
-                console.warn("Invalid professor name received. First or last name is missing:", request.professor);
-                port.postMessage({ type: 'gradeDistribution', data: [] }); // Send empty data
-                return;
-            }
-
-            const results = await searchGradeDistributions(firstName, lastName);
-            port.postMessage({ type: 'gradeDistribution', data: results });
-        }
-    });
-});
 
 
 const searchProfessor = async (name, schoolID) => {
@@ -175,8 +194,6 @@ const getProfessor = async (id) => {
 async function sendProfessorInfo(professorName) {
     // Check if professorName is a valid string before normalizing
     if (typeof professorName !== 'string') {
-		// Small bug. Right now this is happening whenever
-		// the grade distribution popup is being called
         return { error: 'Invalid professor name provided.' };
     }
 
@@ -205,15 +222,33 @@ async function sendProfessorInfo(professorName) {
     }
 }
 
+// Single consolidated listener for all content script requests
 chrome.runtime.onConnect.addListener((port) => {
-	port.onMessage.addListener((request) => {
-		sendProfessorInfo(request.professorName)
-			.then((professor) => {
-				port.postMessage(professor);
-			})
-			.catch((error) => {
-				console.error('Error:', error);
-				port.postMessage({ error });
-			});
+	port.onMessage.addListener(async (request) => {
+		// Handle grade distribution requests
+		if (request.type === 'gradeDistribution') {
+			const { firstName, lastName } = request.professor;
+
+			// Check for valid firstName and lastName
+			if (!firstName || !lastName) {
+				console.warn("Invalid professor name received. First or last name is missing:", request.professor);
+				port.postMessage({ type: 'gradeDistribution', data: [] });
+				return;
+			}
+
+			const results = await searchGradeDistributions(firstName, lastName);
+			port.postMessage({ type: 'gradeDistribution', data: results });
+		}
+		// Handle professor rating requests
+		else if (request.professorName) {
+			sendProfessorInfo(request.professorName)
+				.then((professor) => {
+					port.postMessage(professor);
+				})
+				.catch((error) => {
+					console.error('Error:', error);
+					port.postMessage({ error });
+				});
+		}
 	});
 });
