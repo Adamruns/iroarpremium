@@ -4,6 +4,15 @@
 const AUTH_TOKEN = 'dGVzdDp0ZXN0';
 const SCHOOL_ID = ['U2Nob29sLTI0Mg=='];
 
+// Cache configuration
+const RMP_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+
+// In-memory cache for parsed CSV data (persists for service worker lifetime)
+let csvCache = null;
+
+// In-memory cache for RMP data (also backed by chrome.storage.local)
+const rmpMemoryCache = new Map();
+
 // List of grade distribution CSV files within the extension
 const gradeDistributionFiles = [
     'grade_distributions_final/2013Fall.csv', 'grade_distributions_final/2014Fall.csv',
@@ -62,9 +71,14 @@ function parseCSV(text) {
     return rows;
 }
 
-// Load and search CSVs for grade distribution by professor
-async function searchGradeDistributions(professorFirstName, professorLastName) {
-    const results = [];
+// Load all CSV data into cache (called once per service worker lifetime)
+async function loadAllCSVData() {
+    if (csvCache !== null) {
+        return csvCache;
+    }
+
+    console.log('Loading CSV data into cache...');
+    csvCache = [];
 
     for (const file of gradeDistributionFiles) {
         const fileURL = chrome.runtime.getURL(file);
@@ -76,16 +90,76 @@ async function searchGradeDistributions(professorFirstName, professorLastName) {
         const year = file.match(/\d{4}/)[0];
         const semester = file.includes('Fall') ? 'Fall' : 'Spring';
 
-        // Search rows for professor name
+        // Store each row with its metadata
         for (const row of rows) {
-            const rowString = row.join(' ').toLowerCase();
-            if (rowString.includes(professorFirstName.toLowerCase()) && rowString.includes(professorLastName.toLowerCase())) {
-                results.push({ year, semester, data: row });
-            }
+            csvCache.push({ year, semester, data: row, searchText: row.join(' ').toLowerCase() });
         }
     }
 
-    return results;
+    console.log(`CSV cache loaded: ${csvCache.length} rows`);
+    return csvCache;
+}
+
+// Load and search CSVs for grade distribution by professor (uses cache)
+async function searchGradeDistributions(professorFirstName, professorLastName) {
+    const allData = await loadAllCSVData();
+    const firstNameLower = professorFirstName.toLowerCase();
+    const lastNameLower = professorLastName.toLowerCase();
+
+    return allData.filter(entry =>
+        entry.searchText.includes(firstNameLower) && entry.searchText.includes(lastNameLower)
+    ).map(({ year, semester, data }) => ({ year, semester, data }));
+}
+
+// RMP Cache helpers
+async function getRMPFromCache(professorName) {
+    const cacheKey = `rmp_${professorName.toLowerCase()}`;
+
+    // Check memory cache first
+    if (rmpMemoryCache.has(cacheKey)) {
+        const cached = rmpMemoryCache.get(cacheKey);
+        if (Date.now() - cached.timestamp < RMP_CACHE_TTL) {
+            console.log(`RMP cache hit (memory): ${professorName}`);
+            return cached.data;
+        }
+        rmpMemoryCache.delete(cacheKey);
+    }
+
+    // Check chrome.storage.local
+    try {
+        const result = await chrome.storage.local.get(cacheKey);
+        if (result[cacheKey]) {
+            const cached = result[cacheKey];
+            if (Date.now() - cached.timestamp < RMP_CACHE_TTL) {
+                console.log(`RMP cache hit (storage): ${professorName}`);
+                // Populate memory cache
+                rmpMemoryCache.set(cacheKey, cached);
+                return cached.data;
+            }
+            // Expired, remove from storage
+            await chrome.storage.local.remove(cacheKey);
+        }
+    } catch (error) {
+        console.warn('Error reading from cache:', error);
+    }
+
+    return null;
+}
+
+async function setRMPCache(professorName, data) {
+    const cacheKey = `rmp_${professorName.toLowerCase()}`;
+    const cacheEntry = { data, timestamp: Date.now() };
+
+    // Set in memory cache
+    rmpMemoryCache.set(cacheKey, cacheEntry);
+
+    // Set in chrome.storage.local
+    try {
+        await chrome.storage.local.set({ [cacheKey]: cacheEntry });
+        console.log(`RMP cached: ${professorName}`);
+    } catch (error) {
+        console.warn('Error writing to cache:', error);
+    }
 }
 
 
@@ -198,6 +272,13 @@ async function sendProfessorInfo(professorName) {
     }
 
     const normalizedName = professorName.normalize('NFKD');
+
+    // Check cache first
+    const cached = await getRMPFromCache(normalizedName);
+    if (cached) {
+        return cached;
+    }
+
     try {
         let professorID;
         for (let i = 0; i < SCHOOL_ID.length; i++) {
@@ -211,10 +292,17 @@ async function sendProfessorInfo(professorName) {
         }
         if (professorID === undefined) {
             console.log('No ' + professorName + ' found for any schoolID:', SCHOOL_ID);
-            return { error: professorName + ' not found on RMP for any given SCHOOL_ID' };
+            const errorResult = { error: professorName + ' not found on RMP for any given SCHOOL_ID' };
+            // Cache "not found" results too to avoid repeated lookups
+            await setRMPCache(normalizedName, errorResult);
+            return errorResult;
         }
         const professor = await getProfessor(professorID);
         console.log(professor);
+
+        // Cache the successful result
+        await setRMPCache(normalizedName, professor);
+
         return professor;
     } catch (error) {
         console.error('Error sending professor info for ' + professorName, error);

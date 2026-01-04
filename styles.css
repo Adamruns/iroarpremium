@@ -13,6 +13,22 @@
   white-space: normal;   /* For other browsers */
   overflow-wrap: break-word; /* For modern browsers */
 }
+
+/* Color coding for ratings */
+.rating-good {
+  color: #2e7d32; /* Green */
+  font-weight: bold;
+}
+
+.rating-medium {
+  color: #f57c00; /* Orange */
+  font-weight: bold;
+}
+
+.rating-poor {
+  color: #c62828; /* Red */
+  font-weight: bold;
+}
 /* Grade Distribution Popup Styling */
 .grade-distribution-popup {
     position: fixed; /* Fixed positioning for overlay effect */

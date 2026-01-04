@@ -77,16 +77,39 @@ observer.observe(document.body, { childList: true, subtree: true });
 
 window.addEventListener('hashchange', appendRMP, false);
 
+// Color coding helpers
+function getRatingColor(rating) {
+    if (rating >= 4) return 'rating-good';
+    if (rating >= 3) return 'rating-medium';
+    return 'rating-poor';
+}
+
+function getDifficultyColor(difficulty) {
+    // Lower difficulty is better
+    if (difficulty <= 2.5) return 'rating-good';
+    if (difficulty <= 3.5) return 'rating-medium';
+    return 'rating-poor';
+}
+
+function getWouldTakeAgainColor(percent) {
+    if (percent >= 70) return 'rating-good';
+    if (percent >= 50) return 'rating-medium';
+    return 'rating-poor';
+}
+
 function insertRating(link, avgRating) {
-    link.insertAdjacentHTML('afterend', `<div class="rating"><b>Rating:</b> ${avgRating}/5</div>`);
+    const colorClass = getRatingColor(avgRating);
+    link.insertAdjacentHTML('afterend', `<div class="rating"><b>Rating:</b> <span class="${colorClass}">${avgRating}/5</span></div>`);
 }
 
 function insertAvgDifficulty(link, avgDifficulty) {
-    link.insertAdjacentHTML('afterend', `<div class="rating"><b>Difficulty:</b> ${avgDifficulty}/5</div>`);
+    const colorClass = getDifficultyColor(avgDifficulty);
+    link.insertAdjacentHTML('afterend', `<div class="rating"><b>Difficulty:</b> <span class="${colorClass}">${avgDifficulty}/5</span></div>`);
 }
 
 function insertWouldTakeAgainPercent(link, wouldTakeAgainPercent) {
-    link.insertAdjacentHTML('afterend', `<div class="rating"><b>${Math.round(wouldTakeAgainPercent)}%</b> of students would take this professor again.</div>`);
+    const colorClass = getWouldTakeAgainColor(wouldTakeAgainPercent);
+    link.insertAdjacentHTML('afterend', `<div class="rating"><span class="${colorClass}"><b>${Math.round(wouldTakeAgainPercent)}%</b></span> would take again</div>`);
 }
 
 function insertNumRatings(link, numRatings, legacyId) {

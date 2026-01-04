@@ -42,6 +42,11 @@ No build process required - vanilla JavaScript, CSS, and static CSV files.
 
 CSV files in `grade_distributions_final/` contain historical grade data (2013-2024). Format: Course info + grade percentages (A, B, C, D, F, P, F(P), W, I). Background.js searches by professor first/last name across all CSV files.
 
+### Caching
+
+- **RMP data**: Two-tier cache (in-memory Map + `chrome.storage.local`) with 7-day TTL. Caches both successful lookups and "not found" results.
+- **CSV data**: In-memory cache loads all CSV files once per service worker lifetime, pre-computes lowercase search text for fast filtering.
+
 ## Key Implementation Details
 
 - Professor names extracted from format "Last, First" and converted to "First Last"
