@@ -30,6 +30,7 @@
     let sortColumn = 'subjectDescription';
     let sortDirection = 'asc';
     let activeFilters = {};
+    let searchFormReset = false;
 
     const rmpDataMap = new Map();
     const gradeDataMap = new Map();
@@ -795,6 +796,45 @@
         });
     }
 
+    function fetchDetailJSON(endpoint, term, crn) {
+        const url = BASE_PATH + '/searchResults/' + endpoint + '?term=' + term + '&courseReferenceNumber=' + crn;
+        return fetch(url).then(function (response) {
+            return response.json();
+        }).catch(function () {
+            return null;
+        });
+    }
+
+    function formatMeetingTimesJSON(data) {
+        if (!data || !data.fmt || data.fmt.length === 0) return null;
+
+        return data.fmt.map(function (entry) {
+            const meeting = entry.meetingTime;
+            if (!meeting) return '';
+
+            const days = formatDays(meeting);
+            const time = formatTime(meeting.beginTime) + ' - ' + formatTime(meeting.endTime);
+            const location = (meeting.buildingDescription || meeting.building || '') + (meeting.room ? ' ' + meeting.room : '');
+            const type = meeting.meetingTypeDescription || '';
+            const dates = (meeting.startDate || '') + ' - ' + (meeting.endDate || '');
+
+            let line = days + ' ' + time;
+            if (location) line += ', ' + location;
+            if (type) line += ' (' + type + ')';
+            if (dates) line += ' | ' + dates;
+
+            return line;
+        }).filter(Boolean).join('\n');
+    }
+
+    function formatLinkedSectionsJSON(data) {
+        if (!data || !data.linkedData || data.linkedData.length === 0) return null;
+
+        return data.linkedData.map(function (linked) {
+            return linked.subject + ' ' + linked.courseNumber + '-' + linked.sequenceNumber + ' (CRN: ' + linked.courseReferenceNumber + ')';
+        }).join('\n');
+    }
+
     function renderGradeBars(chartId, gradeData, selection) {
         const chart = document.getElementById(chartId);
         if (!chart) return;
@@ -898,22 +938,33 @@
             + '</div>';
     }
 
+    function isEmptyDetail(text) {
+        if (!text) return true;
+        const lower = text.toLowerCase();
+        return lower.includes('no prerequisite information') ||
+               lower.includes('no corequisite') ||
+               lower.includes('no course restriction') ||
+               lower.includes('no fee information') ||
+               lower.includes('no linked') ||
+               lower.includes('not available');
+    }
+
     function renderDetailPanel(detailRow, section, details) {
         const panel = detailRow.querySelector('.irp-detail-panel');
 
         let infoHTML = '';
         if (details.description) infoHTML += '<div class="irp-detail-section"><h4>Description</h4><p>' + escapeHTML(details.description) + '</p></div>';
-        if (details.meetingTimes) infoHTML += '<div class="irp-detail-section"><h4>Meeting Times</h4><p>' + escapeHTML(details.meetingTimes) + '</p></div>';
-        if (details.fees) infoHTML += '<div class="irp-detail-section"><h4>Fees</h4><p>' + escapeHTML(details.fees) + '</p></div>';
-        if (details.attributes) infoHTML += '<div class="irp-detail-section"><h4>Attributes</h4><p>' + escapeHTML(details.attributes) + '</p></div>';
+        if (details.meetingTimes) infoHTML += '<div class="irp-detail-section"><h4>Meeting Times</h4><p style="white-space:pre-line">' + escapeHTML(details.meetingTimes) + '</p></div>';
+        if (!isEmptyDetail(details.fees)) infoHTML += '<div class="irp-detail-section"><h4>Fees</h4><p>' + escapeHTML(details.fees) + '</p></div>';
+        if (!isEmptyDetail(details.attributes)) infoHTML += '<div class="irp-detail-section"><h4>Attributes</h4><p>' + escapeHTML(details.attributes) + '</p></div>';
         if (details.enrollment) infoHTML += '<div class="irp-detail-section"><h4>Enrollment</h4><p>' + escapeHTML(details.enrollment) + '</p></div>';
         panel.querySelector('.irp-detail-info-content').innerHTML = infoHTML || '<p class="irp-text-muted">No additional info</p>';
 
         let reqsHTML = '';
-        if (details.prerequisites) reqsHTML += '<div class="irp-detail-section"><h4>Prerequisites</h4><p>' + escapeHTML(details.prerequisites) + '</p></div>';
-        if (details.corequisites) reqsHTML += '<div class="irp-detail-section"><h4>Corequisites</h4><p>' + escapeHTML(details.corequisites) + '</p></div>';
-        if (details.restrictions) reqsHTML += '<div class="irp-detail-section"><h4>Restrictions</h4><p>' + escapeHTML(details.restrictions) + '</p></div>';
-        if (details.linkedSections) reqsHTML += '<div class="irp-detail-section"><h4>Linked Sections</h4><p>' + escapeHTML(details.linkedSections) + '</p></div>';
+        if (!isEmptyDetail(details.prerequisites)) reqsHTML += '<div class="irp-detail-section"><h4>Prerequisites</h4><p>' + escapeHTML(details.prerequisites) + '</p></div>';
+        if (!isEmptyDetail(details.corequisites)) reqsHTML += '<div class="irp-detail-section"><h4>Corequisites</h4><p>' + escapeHTML(details.corequisites) + '</p></div>';
+        if (!isEmptyDetail(details.restrictions)) reqsHTML += '<div class="irp-detail-section"><h4>Restrictions</h4><p>' + escapeHTML(details.restrictions) + '</p></div>';
+        if (details.linkedSections) reqsHTML += '<div class="irp-detail-section"><h4>Linked Sections</h4><p style="white-space:pre-line">' + escapeHTML(details.linkedSections) + '</p></div>';
         panel.querySelector('.irp-detail-reqs-content').innerHTML = reqsHTML || '<p class="irp-text-muted">No requirements</p>';
 
         const rmpContent = panel.querySelector('.irp-detail-rmp-content');
@@ -930,22 +981,22 @@
             fetchDetailHTML('getSectionPrerequisites', term, crn),
             fetchDetailHTML('getCorequisites', term, crn),
             fetchDetailHTML('getRestrictions', term, crn),
-            fetchDetailHTML('getFacultyMeetingTimes', term, crn),
+            fetchDetailJSON('getFacultyMeetingTimes', term, crn),
             fetchDetailHTML('getFees', term, crn),
             fetchDetailHTML('getSectionAttributes', term, crn),
             fetchDetailHTML('getEnrollmentInfo', term, crn),
-            fetchDetailHTML('fetchLinkedSections', term, crn),
+            fetchDetailJSON('fetchLinkedSections', term, crn),
         ]).then(function (results) {
             renderDetailPanel(detailRow, section, {
                 description: results[0].value,
                 prerequisites: results[1].value,
                 corequisites: results[2].value,
                 restrictions: results[3].value,
-                meetingTimes: results[4].value,
+                meetingTimes: formatMeetingTimesJSON(results[4].value),
                 fees: results[5].value,
                 attributes: results[6].value,
                 enrollment: results[7].value,
-                linkedSections: results[8].value,
+                linkedSections: formatLinkedSectionsJSON(results[8].value),
             });
         });
     }
@@ -986,12 +1037,9 @@
         loadDetailData(section, detailRow);
     }
 
-    function executeSearch(page) {
-        if (page === undefined) page = 0;
-        currentPage = page;
-
+    function buildSearchParams(page) {
         const params = new URLSearchParams();
-        params.set('term', currentTerm);
+        params.set('txt_term', currentTerm);
         params.set('pageOffset', String(page * PAGE_SIZE));
         params.set('pageMaxSize', String(PAGE_SIZE));
         params.set('sortColumn', sortColumn);
@@ -1010,13 +1058,63 @@
             }
         }
 
+        return params;
+    }
+
+    function resetSearchForm() {
+        return fetch(BASE_PATH + '/classSearch/resetDataForm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        }).catch(function () {
+            // Non-critical — search may still work without reset
+        });
+    }
+
+    function executeSearch(page) {
+        if (page === undefined) page = 0;
+        currentPage = page;
+
+        const params = buildSearchParams(page);
         showLoadingState();
 
-        fetch(BASE_PATH + '/searchResults/searchResults?' + params.toString())
+        const searchUrl = BASE_PATH + '/searchResults/searchResults?' + params.toString();
+
+        // First attempt the search directly
+        fetch(searchUrl)
             .then(function (response) { return response.json(); })
             .then(function (data) {
-                totalResults = data.totalCount || 0;
-                currentSearchResults = data.data || [];
+                console.log('[IRoar Premium] Search response:', data);
+
+                // Banner may return results at data.data or at the top level
+                const results = data.data || [];
+                const count = data.totalCount || data.sectionsFetchedCount || results.length || 0;
+
+                if (results.length === 0 && !searchFormReset) {
+                    // If no results on first try, reset search form and retry
+                    console.log('[IRoar Premium] No results — resetting search form and retrying...');
+                    searchFormReset = true;
+                    resetSearchForm().then(function () {
+                        return fetch(searchUrl);
+                    }).then(function (response) {
+                        return response.json();
+                    }).then(function (retryData) {
+                        console.log('[IRoar Premium] Retry response:', retryData);
+                        totalResults = retryData.totalCount || retryData.sectionsFetchedCount || 0;
+                        currentSearchResults = retryData.data || [];
+                        renderResultsTable(currentSearchResults);
+                        updateSortIndicators();
+                        renderPagination();
+                        loadRMPDataForResults(currentSearchResults);
+                        loadGradeDataForResults(currentSearchResults);
+                    }).catch(function (error) {
+                        showErrorState('Search failed. Please try again.');
+                        console.error('[IRoar Premium] Retry search error:', error);
+                    });
+                    return;
+                }
+
+                totalResults = count;
+                currentSearchResults = results;
                 renderResultsTable(currentSearchResults);
                 updateSortIndicators();
                 renderPagination();
