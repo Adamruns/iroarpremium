@@ -195,7 +195,25 @@
                     <nav class="irp-pagination"></nav>
                 </main>
             </div>
-            <aside class="irp-drawer irp-drawer-closed"></aside>
+            <aside class="irp-drawer irp-drawer-closed">
+                <div class="irp-drawer-header">
+                    <div>
+                        <h2>My Courses (<span class="irp-cart-count">0</span>)</h2>
+                        <span class="irp-cart-credits">0 Credit Hours</span>
+                    </div>
+                    <button type="button" class="irp-drawer-close" aria-label="Close cart">&times;</button>
+                </div>
+                <div class="irp-drawer-crn">
+                    <input type="text" class="irp-crn-input" placeholder="Add by CRN...">
+                    <button type="button" class="irp-crn-add">Add</button>
+                </div>
+                <div class="irp-drawer-courses"></div>
+                <div class="irp-drawer-schedule"></div>
+                <div class="irp-drawer-conflicts irp-hidden"></div>
+                <div class="irp-drawer-footer">
+                    <button type="button" class="irp-submit-registration">Submit Registration</button>
+                </div>
+            </aside>
             <div class="irp-drawer-overlay irp-hidden"></div>
         `;
 
@@ -207,9 +225,15 @@
             fetch(BASE_PATH + '/keepAlive/data').then(function (response) {
                 if (!response.ok) {
                     console.warn('[IRoar Premium] Keepalive failed with status:', response.status);
+                    var dot = document.querySelector('.irp-keepalive-dot');
+                    if (dot) dot.classList.add('irp-keepalive-dead');
+                    showSessionExpired();
                 }
             }).catch(function (error) {
                 console.warn('[IRoar Premium] Keepalive request error:', error);
+                var dot = document.querySelector('.irp-keepalive-dot');
+                if (dot) dot.classList.add('irp-keepalive-dead');
+                showSessionExpired();
             });
         }, 5 * 60 * 1000);
     }
@@ -1020,6 +1044,307 @@
         dropdown.classList.remove('irp-hidden');
     }
 
+    function timeToMinutes(timeString) {
+        if (!timeString || timeString.length < 4) return 0;
+        return parseInt(timeString.substring(0, 2), 10) * 60 + parseInt(timeString.substring(2, 4), 10);
+    }
+
+    function updateCartBadge() {
+        var badge = document.querySelector('.irp-cart-badge');
+        if (!badge) return;
+
+        badge.textContent = cartItems.length;
+
+        if (cartItems.length > 0) {
+            badge.classList.remove('irp-hidden');
+        } else {
+            badge.classList.add('irp-hidden');
+        }
+    }
+
+    function updateAddButtons() {
+        var buttons = document.querySelectorAll('.irp-btn-add, .irp-btn-added');
+
+        for (var i = 0; i < buttons.length; i++) {
+            var crn = buttons[i].dataset.crn;
+            var inCart = cartItems.some(function (item) { return item.courseReferenceNumber === crn; });
+
+            if (inCart) {
+                buttons[i].className = 'irp-btn-added';
+                buttons[i].textContent = 'Added';
+                buttons[i].disabled = true;
+            } else {
+                buttons[i].className = 'irp-btn-add';
+                buttons[i].textContent = 'Add';
+                buttons[i].disabled = false;
+            }
+        }
+
+        updateCartBadge();
+    }
+
+    function openDrawer() {
+        var drawer = document.querySelector('.irp-drawer');
+        var overlay = document.querySelector('.irp-drawer-overlay');
+        if (!drawer || !overlay) return;
+
+        drawer.classList.remove('irp-drawer-closed');
+        overlay.classList.remove('irp-hidden');
+    }
+
+    function renderMiniSchedule() {
+        var container = document.querySelector('.irp-drawer-schedule');
+        if (!container) return;
+
+        if (cartItems.length === 0) {
+            container.innerHTML = '';
+            return;
+        }
+
+        var DAYS = ['M', 'T', 'W', 'R', 'F'];
+        var DAY_MAP = { M: 'monday', T: 'tuesday', W: 'wednesday', R: 'thursday', F: 'friday' };
+        var START_HOUR = 7;
+        var END_HOUR = 22;
+        var HOUR_HEIGHT = 18;
+        var SCHEDULE_COLORS = ['#522D80', '#F56600', '#2196f3', '#4caf50', '#ff9800', '#e91e63'];
+
+        var html = '<div class="irp-schedule">';
+        html += '<div class="irp-schedule-header">';
+
+        for (var d = 0; d < DAYS.length; d++) {
+            html += '<div class="irp-schedule-day-label">' + DAYS[d] + '</div>';
+        }
+
+        html += '</div>';
+        html += '<div class="irp-schedule-body">';
+
+        html += '<div class="irp-schedule-times">';
+
+        for (var h = START_HOUR; h <= END_HOUR; h++) {
+            var label = h > 12 ? (h - 12) + 'p' : (h === 12 ? '12p' : h + 'a');
+            html += '<div class="irp-schedule-time" style="height:' + HOUR_HEIGHT + 'px">' + label + '</div>';
+        }
+
+        html += '</div>';
+
+        for (var dayIndex = 0; dayIndex < DAYS.length; dayIndex++) {
+            html += '<div class="irp-schedule-column" style="height:' + ((END_HOUR - START_HOUR + 1) * HOUR_HEIGHT) + 'px">';
+
+            for (var c = 0; c < cartItems.length; c++) {
+                var meeting = cartItems[c].meetingsFaculty && cartItems[c].meetingsFaculty[0] ? cartItems[c].meetingsFaculty[0].meetingTime : null;
+                if (!meeting || !meeting[DAY_MAP[DAYS[dayIndex]]]) continue;
+
+                var startMinutes = timeToMinutes(meeting.beginTime) - (START_HOUR * 60);
+                var endMinutes = timeToMinutes(meeting.endTime) - (START_HOUR * 60);
+                var top = (startMinutes / 60) * HOUR_HEIGHT;
+                var height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
+                var color = SCHEDULE_COLORS[c % SCHEDULE_COLORS.length];
+
+                html += '<div class="irp-schedule-block" style="top:' + top + 'px;height:' + Math.max(height, 10) + 'px;background:' + color + '"'
+                    + ' title="' + cartItems[c].subject + ' ' + cartItems[c].courseNumber + '">'
+                    + cartItems[c].subject.substring(0, 4)
+                    + '</div>';
+            }
+
+            html += '</div>';
+        }
+
+        html += '</div></div>';
+        container.innerHTML = html;
+    }
+
+    function checkConflicts() {
+        var conflicts = [];
+
+        for (var i = 0; i < cartItems.length; i++) {
+            for (var j = i + 1; j < cartItems.length; j++) {
+                var meetingA = cartItems[i].meetingsFaculty && cartItems[i].meetingsFaculty[0] ? cartItems[i].meetingsFaculty[0].meetingTime : null;
+                var meetingB = cartItems[j].meetingsFaculty && cartItems[j].meetingsFaculty[0] ? cartItems[j].meetingsFaculty[0].meetingTime : null;
+                if (!meetingA || !meetingB) continue;
+
+                var sharedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].filter(function (day) {
+                    return meetingA[day] && meetingB[day];
+                });
+                if (sharedDays.length === 0) continue;
+
+                var startA = timeToMinutes(meetingA.beginTime);
+                var endA = timeToMinutes(meetingA.endTime);
+                var startB = timeToMinutes(meetingB.beginTime);
+                var endB = timeToMinutes(meetingB.endTime);
+
+                if (startA < endB && startB < endA) {
+                    conflicts.push(cartItems[i].subject + ' ' + cartItems[i].courseNumber + ' & ' + cartItems[j].subject + ' ' + cartItems[j].courseNumber);
+                }
+            }
+        }
+
+        var conflictContainer = document.querySelector('.irp-drawer-conflicts');
+        if (!conflictContainer) return;
+
+        if (conflicts.length > 0) {
+            conflictContainer.classList.remove('irp-hidden');
+            conflictContainer.innerHTML = conflicts.map(function (c) {
+                return '<div class="irp-conflict-warning">⚠ Time conflict: ' + c + '</div>';
+            }).join('');
+        } else {
+            conflictContainer.classList.add('irp-hidden');
+            conflictContainer.innerHTML = '';
+        }
+    }
+
+    function renderCart() {
+        var coursesContainer = document.querySelector('.irp-drawer-courses');
+        if (!coursesContainer) return;
+
+        var totalCredits = 0;
+
+        for (var i = 0; i < cartItems.length; i++) {
+            totalCredits += cartItems[i].creditHours || cartItems[i].creditHourLow || 0;
+        }
+
+        var countEl = document.querySelector('.irp-cart-count');
+        if (countEl) countEl.textContent = cartItems.length;
+
+        var creditsEl = document.querySelector('.irp-cart-credits');
+        if (creditsEl) creditsEl.textContent = totalCredits + ' Credit Hours';
+
+        updateCartBadge();
+
+        var html = '';
+
+        for (var j = 0; j < cartItems.length; j++) {
+            var section = cartItems[j];
+            var meeting = section.meetingsFaculty && section.meetingsFaculty[0] ? section.meetingsFaculty[0].meetingTime : null;
+            var days = meeting ? formatDays(meeting) : 'TBA';
+            var time = meeting ? formatTime(meeting.beginTime) + '-' + formatTime(meeting.endTime) : '';
+
+            html += '<div class="irp-cart-card" data-crn="' + section.courseReferenceNumber + '">'
+                + '<div class="irp-cart-card-header">'
+                + '<span class="irp-cart-card-title">' + section.subject + ' ' + section.courseNumber + '-' + section.sequenceNumber + '</span>'
+                + '<button type="button" class="irp-cart-remove" data-crn="' + section.courseReferenceNumber + '" aria-label="Remove">&times;</button>'
+                + '</div>'
+                + '<div class="irp-cart-card-detail">' + days + ' ' + time + '</div>'
+                + '<div class="irp-cart-card-detail">CRN: ' + section.courseReferenceNumber + '</div>'
+                + '</div>';
+        }
+
+        coursesContainer.innerHTML = html || '<p class="irp-text-muted" style="padding:16px;text-align:center;">No courses added yet</p>';
+
+        renderMiniSchedule();
+        checkConflicts();
+    }
+
+    function addToCart(section) {
+        if (cartItems.some(function (item) { return item.courseReferenceNumber === section.courseReferenceNumber; })) return;
+
+        cartItems.push(section);
+        renderCart();
+        openDrawer();
+        updateAddButtons();
+    }
+
+    function removeFromCart(crn) {
+        cartItems = cartItems.filter(function (item) { return item.courseReferenceNumber !== crn; });
+        renderCart();
+        updateAddButtons();
+    }
+
+    function addByCRN(crnValue) {
+        var crn = crnValue.trim();
+        if (!crn) return;
+
+        var section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
+
+        if (section) {
+            addToCart(section);
+        } else {
+            console.warn('[IRoar Premium] CRN ' + crn + ' not found in current search results');
+        }
+    }
+
+    function showDrawerError(message) {
+        var existing = document.querySelector('.irp-drawer-error');
+        if (existing) existing.remove();
+
+        var errorEl = document.createElement('div');
+        errorEl.className = 'irp-drawer-error';
+        errorEl.textContent = message;
+
+        var footer = document.querySelector('.irp-drawer-footer');
+        if (footer) footer.parentNode.insertBefore(errorEl, footer);
+
+        setTimeout(function () {
+            if (errorEl.parentNode) errorEl.remove();
+        }, 5000);
+    }
+
+    function renderSubmitResult(data) {
+        var existing = document.querySelector('.irp-submit-result');
+        if (existing) existing.remove();
+
+        var resultEl = document.createElement('div');
+        resultEl.className = 'irp-submit-result';
+        var html = '';
+
+        if (Array.isArray(data)) {
+            for (var i = 0; i < data.length; i++) {
+                var item = data[i];
+                if (item.statusDescription === 'Registered' || item.statusIndicator === 'RS') {
+                    html += '<div class="irp-submit-success">&#10003; ' + (item.subject || '') + ' ' + (item.courseNumber || '') + ' — Registered</div>';
+                } else {
+                    var errorMsg = item.message || item.statusDescription || 'Registration failed';
+                    html += '<div class="irp-submit-error">&#10007; ' + (item.subject || '') + ' ' + (item.courseNumber || '') + ' — ' + errorMsg + '</div>';
+                }
+            }
+        } else if (data && data.message) {
+            html = '<div class="irp-submit-error">&#10007; ' + data.message + '</div>';
+        } else {
+            html = '<div class="irp-submit-success">&#10003; Registration submitted</div>';
+        }
+
+        resultEl.innerHTML = html;
+
+        var footer = document.querySelector('.irp-drawer-footer');
+        if (footer) footer.parentNode.insertBefore(resultEl, footer);
+    }
+
+    function submitRegistration() {
+        var submitButton = document.querySelector('.irp-submit-registration');
+        if (!submitButton) return;
+
+        submitButton.disabled = true;
+        submitButton.textContent = 'Submitting...';
+
+        fetch(BASE_PATH + '/classRegistration/submitRegistration', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'synchronizerToken=' + encodeURIComponent(synchronizerToken)
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+            renderSubmitResult(data);
+        })
+        .catch(function (error) {
+            showDrawerError('Registration submission failed. Please try again.');
+            console.error('[IRoar Premium] Submit error:', error);
+        })
+        .finally(function () {
+            submitButton.disabled = false;
+            submitButton.textContent = 'Submit Registration';
+        });
+    }
+
+    function showSessionExpired() {
+        if (document.querySelector('.irp-session-banner')) return;
+
+        var banner = document.createElement('div');
+        banner.className = 'irp-session-banner';
+        banner.innerHTML = 'Session expired. <a href="/StudentRegistrationSsb/ssb/prepareRegistration/prepareRegistration">Log in again</a>';
+
+        var app = document.querySelector('.irp-app');
+        if (app) app.prepend(banner);
+    }
+
     function toggleCartDrawer() {
         const drawer = document.querySelector('.irp-drawer');
         const overlay = document.querySelector('.irp-drawer-overlay');
@@ -1162,7 +1487,8 @@
                 var addButton = event.target.closest('.irp-btn-add');
                 if (addButton) {
                     var crn = addButton.dataset.crn;
-                    console.log('[IRoar Premium] Add section CRN:', crn);
+                    var section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
+                    if (section) addToCart(section);
                     return;
                 }
 
@@ -1180,6 +1506,46 @@
 
         if (drawerOverlay) {
             drawerOverlay.addEventListener('click', toggleCartDrawer);
+        }
+
+        var drawer = document.querySelector('.irp-drawer');
+
+        if (drawer) {
+            drawer.addEventListener('click', function (event) {
+                if (event.target.closest('.irp-drawer-close')) {
+                    toggleCartDrawer();
+                    return;
+                }
+
+                var removeButton = event.target.closest('.irp-cart-remove');
+                if (removeButton) {
+                    removeFromCart(removeButton.dataset.crn);
+                    return;
+                }
+
+                if (event.target.closest('.irp-crn-add')) {
+                    var crnInput = document.querySelector('.irp-crn-input');
+                    if (crnInput) {
+                        addByCRN(crnInput.value);
+                        crnInput.value = '';
+                    }
+                    return;
+                }
+
+                if (event.target.closest('.irp-submit-registration')) {
+                    submitRegistration();
+                }
+            });
+
+            var crnInput = drawer.querySelector('.irp-crn-input');
+            if (crnInput) {
+                crnInput.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter') {
+                        addByCRN(crnInput.value);
+                        crnInput.value = '';
+                    }
+                });
+            }
         }
 
         document.addEventListener('click', function (event) {
