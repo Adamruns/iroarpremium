@@ -171,7 +171,7 @@
                             <line x1="3" y1="18" x2="21" y2="18"/>
                         </svg>
                     </button>
-                    <span class="irp-brand">IRoar <span class="irp-brand-premium">Premium</span></span>
+                    <a href="https://sadv.sis.clemson.edu/StudentSelfService/ssb/studentCommonDashboard" class="irp-brand">IRoar <span class="irp-brand-premium">Premium</span></a>
                 </div>
                 <div class="irp-topbar-center">
                     <span class="irp-term-display"></span>
