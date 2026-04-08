@@ -334,8 +334,379 @@
         renderActiveFilterChips();
     }
 
-    function executeSearch() {
-        console.log('[IRoar Premium] Search with filters:', activeFilters);
+    function normalizeProfessorName(displayName) {
+        if (!displayName) return '';
+        if (displayName.includes(',')) {
+            var parts = displayName.split(',');
+            return parts[1].trim() + ' ' + parts[0].trim();
+        }
+        return displayName;
+    }
+
+    function formatTime(timeString) {
+        if (!timeString || timeString.length < 4) return '';
+        var hours = parseInt(timeString.substring(0, 2), 10);
+        var minutes = timeString.substring(2, 4);
+        var period = hours >= 12 ? 'pm' : 'am';
+        if (hours > 12) hours -= 12;
+        if (hours === 0) hours = 12;
+        return hours + ':' + minutes + period;
+    }
+
+    function formatDays(meetingTime) {
+        var days = '';
+        if (meetingTime.monday) days += 'M';
+        if (meetingTime.tuesday) days += 'T';
+        if (meetingTime.wednesday) days += 'W';
+        if (meetingTime.thursday) days += 'R';
+        if (meetingTime.friday) days += 'F';
+        return days || 'TBA';
+    }
+
+    function getRatingColor(rating) {
+        if (rating >= 4) return 'good';
+        if (rating >= 3) return 'medium';
+        return 'poor';
+    }
+
+    function getDifficultyColor(difficulty) {
+        if (difficulty <= 2.5) return 'good';
+        if (difficulty <= 3.5) return 'medium';
+        return 'poor';
+    }
+
+    function getWTAColor(percent) {
+        if (percent >= 70) return 'good';
+        if (percent >= 50) return 'medium';
+        return 'poor';
+    }
+
+    function renderStatusDot(section) {
+        var enrolled = section.enrollment || 0;
+        var max = section.maximumEnrollment || 0;
+        var waitCount = section.waitCount || 0;
+        if (enrolled >= max && waitCount > 0) return '<span class="irp-status irp-status-waitlist" title="Waitlist"></span>';
+        if (enrolled >= max) return '<span class="irp-status irp-status-closed" title="Closed"></span>';
+        return '<span class="irp-status irp-status-open" title="Open"></span>';
+    }
+
+    function renderProfessor(section) {
+        var faculty = section.faculty && section.faculty[0];
+        if (!faculty) return '<span class="irp-text-muted">TBA</span>';
+        return '<span class="irp-professor" data-name="' + faculty.displayName + '">' + faculty.displayName + '</span>';
+    }
+
+    function renderSeats(section) {
+        var enrolled = section.enrollment || 0;
+        var max = section.maximumEnrollment || 0;
+        var remaining = max - enrolled;
+        var colorClass = remaining > 5 ? 'irp-good' : remaining > 0 ? 'irp-medium' : 'irp-poor';
+        return '<span class="' + colorClass + '">' + enrolled + '/' + max + '</span>';
+    }
+
+    function renderAddButton(section) {
+        var inCart = cartItems.some(function (item) { return item.courseReferenceNumber === section.courseReferenceNumber; });
+        if (inCart) return '<button class="irp-btn-added" disabled>Added</button>';
+        return '<button class="irp-btn-add" data-crn="' + section.courseReferenceNumber + '">Add</button>';
+    }
+
+    function showLoadingState() {
+        var container = document.querySelector('.irp-results-container');
+        if (!container) return;
+
+        var html = '';
+        for (var i = 0; i < 8; i++) {
+            html += '<div class="irp-skeleton-row"></div>';
+        }
+        container.innerHTML = html;
+    }
+
+    function showErrorState(message) {
+        var container = document.querySelector('.irp-results-container');
+        if (!container) return;
+
+        container.innerHTML = '<div class="irp-empty-state">'
+            + '<p>' + message + '</p>'
+            + '<button type="button" class="irp-btn-add" onclick="this.closest(\'.irp-results-container\').dispatchEvent(new Event(\'irp-retry\'))">Retry</button>'
+            + '</div>';
+
+        container.addEventListener('irp-retry', function () {
+            executeSearch(currentPage);
+        }, { once: true });
+    }
+
+    function showEmptyResults() {
+        var container = document.querySelector('.irp-results-container');
+        if (!container) return;
+        container.innerHTML = '<div class="irp-empty-state">No results found</div>';
+    }
+
+    function renderResultsTable(results) {
+        var container = document.querySelector('.irp-results-container');
+        if (!container) return;
+
+        if (!results || results.length === 0) {
+            showEmptyResults();
+            return;
+        }
+
+        var html = '<table class="irp-table">'
+            + '<thead><tr>'
+            + '<th style="width:32px"></th>'
+            + '<th data-sort-key="courseReferenceNumber" style="width:70px">CRN</th>'
+            + '<th data-sort-key="subjectDescription" style="width:60px">Subj</th>'
+            + '<th data-sort-key="courseNumber" style="width:60px">Crse</th>'
+            + '<th data-sort-key="sequenceNumber" style="width:50px">Sec</th>'
+            + '<th data-sort-key="courseTitle">Title</th>'
+            + '<th data-sort-key="creditHours" style="width:45px">Hrs</th>'
+            + '<th style="width:140px">Professor</th>'
+            + '<th style="width:55px">Rating</th>'
+            + '<th style="width:50px">Diff</th>'
+            + '<th style="width:55px">WTA%</th>'
+            + '<th style="width:80px">Grades</th>'
+            + '<th style="width:100px">Time</th>'
+            + '<th style="width:60px">Days</th>'
+            + '<th style="width:100px">Location</th>'
+            + '<th style="width:70px">Seats</th>'
+            + '<th style="width:70px"></th>'
+            + '</tr></thead><tbody>';
+
+        for (var i = 0; i < results.length; i++) {
+            var section = results[i];
+            var meeting = section.meetingsFaculty && section.meetingsFaculty[0] && section.meetingsFaculty[0].meetingTime;
+
+            var timeDisplay = '';
+            var daysDisplay = 'TBA';
+            var locationDisplay = 'TBA';
+
+            if (meeting) {
+                var begin = formatTime(meeting.beginTime);
+                var end = formatTime(meeting.endTime);
+                timeDisplay = begin && end ? begin + '-' + end : '';
+                daysDisplay = formatDays(meeting);
+                var building = meeting.building || '';
+                var room = meeting.room || '';
+                locationDisplay = (building + ' ' + room).trim() || 'TBA';
+            }
+
+            var credits = section.creditHours || section.creditHourLow || '—';
+
+            html += '<tr data-crn="' + section.courseReferenceNumber + '">'
+                + '<td>' + renderStatusDot(section) + '</td>'
+                + '<td>' + section.courseReferenceNumber + '</td>'
+                + '<td>' + (section.subject || '') + '</td>'
+                + '<td>' + (section.courseNumber || '') + '</td>'
+                + '<td>' + (section.sequenceNumber || '') + '</td>'
+                + '<td>' + (section.courseTitle || '') + '</td>'
+                + '<td>' + credits + '</td>'
+                + '<td>' + renderProfessor(section) + '</td>'
+                + '<td><span class="irp-cell-loading"></span></td>'
+                + '<td><span class="irp-cell-loading"></span></td>'
+                + '<td><span class="irp-cell-loading"></span></td>'
+                + '<td><span class="irp-cell-loading"></span></td>'
+                + '<td>' + timeDisplay + '</td>'
+                + '<td>' + daysDisplay + '</td>'
+                + '<td>' + locationDisplay + '</td>'
+                + '<td>' + renderSeats(section) + '</td>'
+                + '<td>' + renderAddButton(section) + '</td>'
+                + '</tr>';
+        }
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function renderPagination() {
+        var paginationContainer = document.querySelector('.irp-pagination');
+        if (!paginationContainer) return;
+
+        var totalPages = Math.ceil(totalResults / PAGE_SIZE);
+        if (totalPages <= 1) {
+            paginationContainer.innerHTML = '';
+            return;
+        }
+
+        var html = '';
+        if (currentPage > 0) {
+            html += '<button type="button" class="irp-page-btn" data-page="' + (currentPage - 1) + '">Prev</button>';
+        }
+
+        for (var i = 0; i < totalPages; i++) {
+            var activeClass = i === currentPage ? ' irp-page-active' : '';
+            html += '<button type="button" class="irp-page-btn' + activeClass + '" data-page="' + i + '">' + (i + 1) + '</button>';
+        }
+
+        if (currentPage < totalPages - 1) {
+            html += '<button type="button" class="irp-page-btn" data-page="' + (currentPage + 1) + '">Next</button>';
+        }
+
+        paginationContainer.innerHTML = html;
+    }
+
+    function updateRMPCells(normalizedName) {
+        var teacher = rmpDataMap.get(normalizedName);
+        var rows = document.querySelectorAll('.irp-table tbody tr[data-crn]');
+
+        for (var i = 0; i < rows.length; i++) {
+            var profElement = rows[i].querySelector('.irp-professor');
+            if (!profElement) continue;
+
+            var rowNormalized = normalizeProfessorName(profElement.dataset.name).toLowerCase();
+            if (rowNormalized !== normalizedName) continue;
+
+            var cells = rows[i].querySelectorAll('td');
+
+            if (teacher.error || teacher.wouldTakeAgainPercent === -1) {
+                cells[8].innerHTML = '<span class="irp-text-muted">N/A</span>';
+                cells[9].innerHTML = '<span class="irp-text-muted">N/A</span>';
+                cells[10].innerHTML = '<span class="irp-text-muted">N/A</span>';
+            } else {
+                cells[8].innerHTML = '<span class="irp-' + getRatingColor(teacher.avgRating) + '">' + teacher.avgRating + '</span>';
+                cells[9].innerHTML = '<span class="irp-' + getDifficultyColor(teacher.avgDifficulty) + '">' + teacher.avgDifficulty + '</span>';
+                cells[10].innerHTML = '<span class="irp-' + getWTAColor(teacher.wouldTakeAgainPercent) + '">' + Math.round(teacher.wouldTakeAgainPercent) + '%</span>';
+            }
+        }
+    }
+
+    function loadRMPDataForResults(results) {
+        var professors = new Set();
+        for (var i = 0; i < results.length; i++) {
+            var faculty = results[i].faculty && results[i].faculty[0];
+            if (faculty && faculty.displayName) {
+                professors.add(faculty.displayName);
+            }
+        }
+
+        professors.forEach(function (displayName) {
+            var normalized = normalizeProfessorName(displayName).toLowerCase();
+            if (rmpDataMap.has(normalized)) {
+                updateRMPCells(normalized);
+                return;
+            }
+
+            var professorName = normalizeProfessorName(displayName);
+            var port = chrome.runtime.connect({ name: 'professor-rating' });
+            port.postMessage({ professorName: professorName });
+            port.onMessage.addListener(function (teacher) {
+                rmpDataMap.set(normalized, teacher);
+                updateRMPCells(normalized);
+            });
+        });
+    }
+
+    function updateGradeCells(normalizedName) {
+        var gradeData = gradeDataMap.get(normalizedName);
+        var rows = document.querySelectorAll('.irp-table tbody tr[data-crn]');
+
+        for (var i = 0; i < rows.length; i++) {
+            var profElement = rows[i].querySelector('.irp-professor');
+            if (!profElement) continue;
+
+            var rowNormalized = normalizeProfessorName(profElement.dataset.name).toLowerCase();
+            if (rowNormalized !== normalizedName) continue;
+
+            var cell = rows[i].querySelectorAll('td')[11];
+            if (!gradeData || gradeData.length === 0) {
+                cell.innerHTML = '<span class="irp-text-muted">N/A</span>';
+                continue;
+            }
+
+            var totals = { a: 0, b: 0, c: 0, d: 0, f: 0 };
+            var count = gradeData.length;
+            for (var j = 0; j < count; j++) {
+                var row = gradeData[j].data;
+                totals.a += parseFloat(row[4]) || 0;
+                totals.b += parseFloat(row[5]) || 0;
+                totals.c += parseFloat(row[6]) || 0;
+                totals.d += parseFloat(row[7]) || 0;
+                totals.f += parseFloat(row[8]) || 0;
+            }
+
+            var averageA = Math.round(totals.a / count);
+            var averageB = Math.round(totals.b / count);
+            var averageC = Math.round(totals.c / count);
+            var averageD = Math.round(totals.d / count);
+            var averageF = Math.round(totals.f / count);
+
+            cell.innerHTML = '<div class="irp-grade-bar" title="A:' + averageA + '% B:' + averageB + '% C:' + averageC + '% D:' + averageD + '% F:' + averageF + '%">'
+                + '<div class="irp-grade-a" style="width:' + averageA + '%"></div>'
+                + '<div class="irp-grade-b" style="width:' + averageB + '%"></div>'
+                + '<div class="irp-grade-c" style="width:' + averageC + '%"></div>'
+                + '<div class="irp-grade-d" style="width:' + averageD + '%"></div>'
+                + '<div class="irp-grade-f" style="width:' + averageF + '%"></div>'
+                + '</div>';
+        }
+    }
+
+    function loadGradeDataForResults(results) {
+        var professors = new Set();
+        for (var i = 0; i < results.length; i++) {
+            var faculty = results[i].faculty && results[i].faculty[0];
+            if (faculty && faculty.displayName) professors.add(faculty.displayName);
+        }
+
+        professors.forEach(function (displayName) {
+            var normalized = normalizeProfessorName(displayName).toLowerCase();
+            if (gradeDataMap.has(normalized)) {
+                updateGradeCells(normalized);
+                return;
+            }
+
+            var name = normalizeProfessorName(displayName);
+            var nameParts = name.split(' ');
+            if (nameParts.length < 2) return;
+
+            var port = chrome.runtime.connect({ name: 'grade-distribution' });
+            port.postMessage({ type: 'gradeDistribution', professor: { firstName: nameParts[0], lastName: nameParts[nameParts.length - 1] } });
+            port.onMessage.addListener(function (response) {
+                if (response.type === 'gradeDistribution') {
+                    gradeDataMap.set(normalized, response.data);
+                    updateGradeCells(normalized);
+                }
+            });
+        });
+    }
+
+    function executeSearch(page) {
+        if (page === undefined) page = 0;
+        currentPage = page;
+
+        var params = new URLSearchParams();
+        params.set('term', currentTerm);
+        params.set('pageOffset', String(page * PAGE_SIZE));
+        params.set('pageMaxSize', String(PAGE_SIZE));
+        params.set('sortColumn', sortColumn);
+        params.set('sortDirection', sortDirection);
+
+        var filterKeys = Object.keys(activeFilters);
+        for (var i = 0; i < filterKeys.length; i++) {
+            var key = filterKeys[i];
+            var value = activeFilters[key];
+            if (key === 'txt_creditHourRange') {
+                var parts = value.code.split('-');
+                if (parts[0]) params.set('txt_credithourlow', parts[0]);
+                if (parts[1]) params.set('txt_credithourhigh', parts[1]);
+            } else {
+                params.set(key, value.code || value);
+            }
+        }
+
+        showLoadingState();
+
+        fetch(BASE_PATH + '/searchResults/searchResults?' + params.toString())
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                totalResults = data.totalCount || 0;
+                currentSearchResults = data.data || [];
+                renderResultsTable(currentSearchResults);
+                renderPagination();
+                loadRMPDataForResults(currentSearchResults);
+                loadGradeDataForResults(currentSearchResults);
+            })
+            .catch(function (error) {
+                showErrorState('Search failed. Please try again.');
+                console.error('[IRoar Premium] Search error:', error);
+            });
     }
 
     function closeAllDropdowns() {
@@ -481,6 +852,31 @@
 
                 if (removeButton) {
                     clearFilter(removeButton.dataset.key);
+                }
+            });
+        }
+
+        var paginationContainer = document.querySelector('.irp-pagination');
+
+        if (paginationContainer) {
+            paginationContainer.addEventListener('click', function (event) {
+                var pageButton = event.target.closest('.irp-page-btn');
+
+                if (pageButton) {
+                    executeSearch(parseInt(pageButton.dataset.page, 10));
+                }
+            });
+        }
+
+        var resultsContainer = document.querySelector('.irp-results-container');
+
+        if (resultsContainer) {
+            resultsContainer.addEventListener('click', function (event) {
+                var addButton = event.target.closest('.irp-btn-add');
+
+                if (addButton) {
+                    var crn = addButton.dataset.crn;
+                    console.log('[IRoar Premium] Add section CRN:', crn);
                 }
             });
         }
