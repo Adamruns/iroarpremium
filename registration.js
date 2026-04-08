@@ -1486,7 +1486,14 @@
 
     function loadExistingCart() {
         fetch(BASE_PATH + '/classRegistration/getRegistrationItems')
-            .then(function (response) { return response.json(); })
+            .then(function (response) {
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    // Endpoint returned HTML (likely not in registration context yet)
+                    return null;
+                }
+                return response.json();
+            })
             .then(function (data) {
                 if (data && Array.isArray(data)) {
                     cartItems = data;
@@ -1494,8 +1501,8 @@
                     updateAddButtons();
                 }
             })
-            .catch(function (error) {
-                console.warn('[IRoar Premium] Could not load existing cart:', error);
+            .catch(function () {
+                // Silently ignore — cart will start empty
             });
     }
 
