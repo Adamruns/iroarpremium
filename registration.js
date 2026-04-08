@@ -1752,21 +1752,45 @@
         });
     }
 
+    function fetchCurrentTerm() {
+        return fetch(BASE_PATH + '/term/current')
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (data && data.studentTerm) {
+                    currentTerm = String(data.studentTerm);
+                } else if (data && data.term) {
+                    currentTerm = String(data.term);
+                } else if (data && typeof data === 'string') {
+                    currentTerm = data;
+                }
+            })
+            .catch(function (error) {
+                console.warn('[IRoar Premium] Could not fetch term from API:', error);
+            });
+    }
+
     function init() {
         extractSessionData();
         hideOriginalUI();
         injectCSS();
         buildShell();
         startKeepalive();
-
-        const termDisplay = document.querySelector('.irp-term-display');
-
-        if (termDisplay && currentTerm) {
-            termDisplay.textContent = formatTermCode(currentTerm);
-        }
-
         bindEvents();
-        loadExistingCart();
+
+        var ready = currentTerm
+            ? Promise.resolve()
+            : fetchCurrentTerm();
+
+        ready.then(function () {
+            console.log('[IRoar Premium] Term resolved:', currentTerm || 'still missing');
+            var termDisplay = document.querySelector('.irp-term-display');
+
+            if (termDisplay && currentTerm) {
+                termDisplay.textContent = formatTermCode(currentTerm);
+            }
+
+            loadExistingCart();
+        });
     }
 
     if (document.readyState === 'loading') {
