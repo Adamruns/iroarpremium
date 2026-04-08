@@ -1,0 +1,107 @@
+:root {
+    --irp-purple: #522D80;
+    --irp-dark-purple: #3D1F63;
+    --irp-orange: #F56600;
+    --irp-dark-orange: #E55A00;
+    --irp-bg: #f5f5f7;
+    --irp-good: #2e7d32;
+    --irp-medium: #f57c00;
+    --irp-poor: #c62828;
+    --irp-sidebar-width: 280px;
+    --irp-drawer-width: 360px;
+    --irp-topbar-height: 56px;
+    --irp-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+body.irp-active {
+    margin: 0;
+    overflow: hidden;
+    background: var(--irp-bg);
+}
+
+.irp-app {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    font-family: var(--irp-font-family);
+    -webkit-font-smoothing: antialiased;
+}
+
+.irp-topbar {
+    height: var(--irp-topbar-height);
+    min-height: var(--irp-topbar-height);
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, var(--irp-purple) 0%, var(--irp-dark-purple) 100%);
+    color: #fff;
+    padding: 0 24px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 6px rgba(82, 45, 128, 0.2);
+    z-index: 100;
+}
+
+.irp-body {
+    display: flex;
+    flex-direction: row;
+    flex: 1;
+    overflow: hidden;
+}
+
+.irp-sidebar {
+    width: var(--irp-sidebar-width);
+    min-width: var(--irp-sidebar-width);
+    overflow-y: auto;
+    border-right: 1px solid #e5e5e7;
+    background: #fff;
+}
+
+.irp-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.irp-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: var(--irp-drawer-width);
+    height: 100vh;
+    background: #fff;
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+    z-index: 200;
+    overflow-y: auto;
+    transform: translateX(0);
+    transition: transform 0.3s ease;
+}
+
+.irp-drawer-closed {
+    transform: translateX(100%);
+}
+
+.irp-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 199;
+}
+
+.irp-hidden {
+    display: none;
+}
+
+.irp-empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 24px;
+    color: #888;
+    font-size: 15px;
+    text-align: center;
+}

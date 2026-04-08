@@ -1,14 +1,14 @@
 {
     "manifest_version": 3,
     "name": "IRoar Premium",
-    "version": "1.0",
-    "description": "Shows Rate My Professors and grade distribution data for Clemson University professors.",
+    "version": "2.0",
+    "description": "Enhances Clemson iROAR with a modern redesigned UI, Rate My Professors ratings, and grade distribution data.",
     "permissions": [
         "storage"
     ],
     "host_permissions": [
         "https://www.ratemyprofessors.com/*",
-        "https://regssb.sis.clemson.edu/*"
+        "https://*.sis.clemson.edu/*"
     ],
     "background": {
         "service_worker": "background.js"
@@ -21,13 +21,24 @@
     },
     "content_scripts": [
         {
+            "matches": ["https://*.sis.clemson.edu/*"],
+            "css": ["banner-restyler.css"],
+            "js": ["banner-restyler.js"],
+            "run_at": "document_end"
+        },
+        {
             "matches": ["https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/*"],
-            "js": ["content.js"]
+            "js": ["registration.js"],
+            "run_at": "document_end"
+        },
+        {
+            "matches": ["https://sadv.sis.clemson.edu/StudentSelfService/ssb/studentCommonDashboard*"],
+            "js": ["dashboard.js"]
         }
     ],
     "web_accessible_resources": [
         {
-          "resources": ["styles.css", "grade_distributions_final/*.csv"],
+          "resources": ["styles.css", "dashboard.css", "banner-restyler.css", "registration.css", "grade_distributions_final/*.csv"],
           "matches": ["<all_urls>"]
         }
     ]
