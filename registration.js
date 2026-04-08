@@ -156,6 +156,13 @@
         app.innerHTML = `
             <header class="irp-topbar">
                 <div class="irp-topbar-left">
+                    <button type="button" class="irp-menu-toggle" aria-label="Toggle filters">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                            <line x1="3" y1="6" x2="21" y2="6"/>
+                            <line x1="3" y1="12" x2="21" y2="12"/>
+                            <line x1="3" y1="18" x2="21" y2="18"/>
+                        </svg>
+                    </button>
                     <span class="irp-brand">IRoar <span class="irp-brand-premium">Premium</span></span>
                 </div>
                 <div class="irp-topbar-center">
@@ -1357,6 +1364,14 @@
         overlay.classList.toggle('irp-hidden');
     }
 
+    function toggleSidebar() {
+        var sidebar = document.querySelector('.irp-sidebar');
+
+        if (sidebar) {
+            sidebar.classList.toggle('irp-sidebar-open');
+        }
+    }
+
     function bindEvents() {
         const debouncedAutocomplete = debounce(function (input) {
             const endpoint = input.dataset.endpoint;
@@ -1547,6 +1562,34 @@
                 });
             }
         }
+
+        var menuToggle = document.querySelector('.irp-menu-toggle');
+
+        if (menuToggle) {
+            menuToggle.addEventListener('click', toggleSidebar);
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' && event.target.closest('.irp-sidebar input')) {
+                executeSearch();
+                return;
+            }
+
+            if (event.key === 'Escape') {
+                var drawerEl = document.querySelector('.irp-drawer');
+
+                if (drawerEl && !drawerEl.classList.contains('irp-drawer-closed')) {
+                    toggleCartDrawer();
+                    return;
+                }
+
+                var sidebarEl = document.querySelector('.irp-sidebar.irp-sidebar-open');
+
+                if (sidebarEl) {
+                    sidebarEl.classList.remove('irp-sidebar-open');
+                }
+            }
+        });
 
         document.addEventListener('click', function (event) {
             if (!event.target.closest('.irp-autocomplete-wrapper')) {
