@@ -34,6 +34,13 @@
     const rmpDataMap = new Map();
     const gradeDataMap = new Map();
 
+    function escapeHTML(text) {
+        if (text === null || text === undefined) return '';
+        const element = document.createElement('span');
+        element.textContent = String(text);
+        return element.innerHTML;
+    }
+
     function extractSessionData() {
         const metaToken = document.querySelector('meta[name="synchronizerToken"]');
 
@@ -232,13 +239,13 @@
             fetch(BASE_PATH + '/keepAlive/data').then(function (response) {
                 if (!response.ok) {
                     console.warn('[IRoar Premium] Keepalive failed with status:', response.status);
-                    var dot = document.querySelector('.irp-keepalive-dot');
+                    const dot = document.querySelector('.irp-keepalive-dot');
                     if (dot) dot.classList.add('irp-keepalive-dead');
                     showSessionExpired();
                 }
             }).catch(function (error) {
                 console.warn('[IRoar Premium] Keepalive request error:', error);
-                var dot = document.querySelector('.irp-keepalive-dot');
+                const dot = document.querySelector('.irp-keepalive-dot');
                 if (dot) dot.classList.add('irp-keepalive-dead');
                 showSessionExpired();
             });
@@ -305,8 +312,8 @@
 
             const chip = document.createElement('span');
             chip.className = 'irp-chip';
-            chip.innerHTML = '<span class="irp-chip-label">' + label + ': ' + displayValue + '</span>'
-                + '<button type="button" class="irp-chip-remove" data-key="' + key + '" aria-label="Remove ' + label + ' filter">&times;</button>';
+            chip.innerHTML = '<span class="irp-chip-label">' + escapeHTML(label) + ': ' + escapeHTML(displayValue) + '</span>'
+                + '<button type="button" class="irp-chip-remove" data-key="' + escapeHTML(key) + '" aria-label="Remove ' + escapeHTML(label) + ' filter">&times;</button>';
             container.appendChild(chip);
         }
     }
@@ -368,7 +375,7 @@
     function normalizeProfessorName(displayName) {
         if (!displayName) return '';
         if (displayName.includes(',')) {
-            var parts = displayName.split(',');
+            const parts = displayName.split(',');
             return parts[1].trim() + ' ' + parts[0].trim();
         }
         return displayName;
@@ -376,16 +383,16 @@
 
     function formatTime(timeString) {
         if (!timeString || timeString.length < 4) return '';
-        var hours = parseInt(timeString.substring(0, 2), 10);
-        var minutes = timeString.substring(2, 4);
-        var period = hours >= 12 ? 'pm' : 'am';
+        let hours = parseInt(timeString.substring(0, 2), 10);
+        const minutes = timeString.substring(2, 4);
+        const period = hours >= 12 ? 'pm' : 'am';
         if (hours > 12) hours -= 12;
         if (hours === 0) hours = 12;
         return hours + ':' + minutes + period;
     }
 
     function formatDays(meetingTime) {
-        var days = '';
+        let days = '';
         if (meetingTime.monday) days += 'M';
         if (meetingTime.tuesday) days += 'T';
         if (meetingTime.wednesday) days += 'W';
@@ -414,75 +421,76 @@
 
     function computeAverageA(gradeData) {
         if (!gradeData || gradeData.length === 0) return -1;
-        var total = 0;
-        for (var i = 0; i < gradeData.length; i++) {
+        let total = 0;
+        for (let i = 0; i < gradeData.length; i++) {
             total += parseFloat(gradeData[i].data[4]) || 0;
         }
         return total / gradeData.length;
     }
 
     function renderStatusDot(section) {
-        var enrolled = section.enrollment || 0;
-        var max = section.maximumEnrollment || 0;
-        var waitCount = section.waitCount || 0;
+        const enrolled = section.enrollment || 0;
+        const max = section.maximumEnrollment || 0;
+        const waitCount = section.waitCount || 0;
         if (enrolled >= max && waitCount > 0) return '<span class="irp-status irp-status-waitlist" title="Waitlist"></span>';
         if (enrolled >= max) return '<span class="irp-status irp-status-closed" title="Closed"></span>';
         return '<span class="irp-status irp-status-open" title="Open"></span>';
     }
 
     function renderProfessor(section) {
-        var faculty = section.faculty && section.faculty[0];
+        const faculty = section.faculty && section.faculty[0];
         if (!faculty) return '<span class="irp-text-muted">TBA</span>';
-        return '<span class="irp-professor" data-name="' + faculty.displayName + '">' + faculty.displayName + '</span>';
+        return '<span class="irp-professor" data-name="' + escapeHTML(faculty.displayName) + '">' + escapeHTML(faculty.displayName) + '</span>';
     }
 
     function renderSeats(section) {
-        var enrolled = section.enrollment || 0;
-        var max = section.maximumEnrollment || 0;
-        var remaining = max - enrolled;
-        var colorClass = remaining > 5 ? 'irp-good' : remaining > 0 ? 'irp-medium' : 'irp-poor';
+        const enrolled = section.enrollment || 0;
+        const max = section.maximumEnrollment || 0;
+        const remaining = max - enrolled;
+        const colorClass = remaining > 5 ? 'irp-good' : remaining > 0 ? 'irp-medium' : 'irp-poor';
         return '<span class="' + colorClass + '">' + enrolled + '/' + max + '</span>';
     }
 
     function renderAddButton(section) {
-        var inCart = cartItems.some(function (item) { return item.courseReferenceNumber === section.courseReferenceNumber; });
+        const inCart = cartItems.some(function (item) { return item.courseReferenceNumber === section.courseReferenceNumber; });
         if (inCart) return '<button class="irp-btn-added" disabled>Added</button>';
-        return '<button class="irp-btn-add" data-crn="' + section.courseReferenceNumber + '">Add</button>';
+        return '<button class="irp-btn-add" data-crn="' + escapeHTML(section.courseReferenceNumber) + '">Add</button>';
     }
 
     function showLoadingState() {
-        var container = document.querySelector('.irp-results-container');
+        const container = document.querySelector('.irp-results-container');
         if (!container) return;
 
-        var html = '';
-        for (var i = 0; i < 8; i++) {
+        let html = '';
+        for (let i = 0; i < 8; i++) {
             html += '<div class="irp-skeleton-row"></div>';
         }
         container.innerHTML = html;
     }
 
     function showErrorState(message) {
-        var container = document.querySelector('.irp-results-container');
+        const container = document.querySelector('.irp-results-container');
         if (!container) return;
 
         container.innerHTML = '<div class="irp-empty-state">'
-            + '<p>' + message + '</p>'
-            + '<button type="button" class="irp-btn-add" onclick="this.closest(\'.irp-results-container\').dispatchEvent(new Event(\'irp-retry\'))">Retry</button>'
+            + '<p>' + escapeHTML(message) + '</p>'
+            + '<button type="button" class="irp-retry-btn">Retry</button>'
             + '</div>';
 
-        container.addEventListener('irp-retry', function () {
-            executeSearch(currentPage);
-        }, { once: true });
+        const retryButton = container.querySelector('.irp-retry-btn');
+        if (retryButton) {
+            retryButton.addEventListener('click', function () { executeSearch(); });
+        }
     }
 
     function showEmptyResults() {
-        var container = document.querySelector('.irp-results-container');
+        const container = document.querySelector('.irp-results-container');
         if (!container) return;
         container.innerHTML = '<div class="irp-empty-state">No results found</div>';
     }
 
     function renderResultsTable(results) {
-        var container = document.querySelector('.irp-results-container');
+        const container = document.querySelector('.irp-results-container');
         if (!container) return;
 
         if (!results || results.length === 0) {
@@ -490,7 +498,7 @@
             return;
         }
 
-        var html = '<table class="irp-table">'
+        let html = '<table class="irp-table">'
             + '<thead><tr>'
             + '<th style="width:32px"></th>'
             + '<th data-sort-key="courseReferenceNumber" style="width:70px">CRN</th>'
@@ -511,42 +519,42 @@
             + '<th style="width:70px"></th>'
             + '</tr></thead><tbody>';
 
-        for (var i = 0; i < results.length; i++) {
-            var section = results[i];
-            var meeting = section.meetingsFaculty && section.meetingsFaculty[0] && section.meetingsFaculty[0].meetingTime;
+        for (let i = 0; i < results.length; i++) {
+            const section = results[i];
+            const meeting = section.meetingsFaculty && section.meetingsFaculty[0] && section.meetingsFaculty[0].meetingTime;
 
-            var timeDisplay = '';
-            var daysDisplay = 'TBA';
-            var locationDisplay = 'TBA';
+            let timeDisplay = '';
+            let daysDisplay = 'TBA';
+            let locationDisplay = 'TBA';
 
             if (meeting) {
-                var begin = formatTime(meeting.beginTime);
-                var end = formatTime(meeting.endTime);
+                const begin = formatTime(meeting.beginTime);
+                const end = formatTime(meeting.endTime);
                 timeDisplay = begin && end ? begin + '-' + end : '';
                 daysDisplay = formatDays(meeting);
-                var building = meeting.building || '';
-                var room = meeting.room || '';
+                const building = meeting.building || '';
+                const room = meeting.room || '';
                 locationDisplay = (building + ' ' + room).trim() || 'TBA';
             }
 
-            var credits = section.creditHours || section.creditHourLow || '—';
+            const credits = section.creditHours || section.creditHourLow || '—';
 
-            html += '<tr data-crn="' + section.courseReferenceNumber + '">'
+            html += '<tr data-crn="' + escapeHTML(section.courseReferenceNumber) + '">'
                 + '<td>' + renderStatusDot(section) + '</td>'
-                + '<td>' + section.courseReferenceNumber + '</td>'
-                + '<td>' + (section.subject || '') + '</td>'
-                + '<td>' + (section.courseNumber || '') + '</td>'
-                + '<td>' + (section.sequenceNumber || '') + '</td>'
-                + '<td>' + (section.courseTitle || '') + '</td>'
-                + '<td>' + credits + '</td>'
+                + '<td>' + escapeHTML(section.courseReferenceNumber) + '</td>'
+                + '<td>' + escapeHTML(section.subject || '') + '</td>'
+                + '<td>' + escapeHTML(section.courseNumber || '') + '</td>'
+                + '<td>' + escapeHTML(section.sequenceNumber || '') + '</td>'
+                + '<td>' + escapeHTML(section.courseTitle || '') + '</td>'
+                + '<td>' + escapeHTML(credits) + '</td>'
                 + '<td>' + renderProfessor(section) + '</td>'
                 + '<td><span class="irp-cell-loading"></span></td>'
                 + '<td><span class="irp-cell-loading"></span></td>'
                 + '<td><span class="irp-cell-loading"></span></td>'
                 + '<td><span class="irp-cell-loading"></span></td>'
-                + '<td>' + timeDisplay + '</td>'
-                + '<td>' + daysDisplay + '</td>'
-                + '<td>' + locationDisplay + '</td>'
+                + '<td>' + escapeHTML(timeDisplay) + '</td>'
+                + '<td>' + escapeHTML(daysDisplay) + '</td>'
+                + '<td>' + escapeHTML(locationDisplay) + '</td>'
                 + '<td>' + renderSeats(section) + '</td>'
                 + '<td>' + renderAddButton(section) + '</td>'
                 + '</tr>';
@@ -557,19 +565,19 @@
     }
 
     function renderPagination() {
-        var paginationContainer = document.querySelector('.irp-pagination');
+        const paginationContainer = document.querySelector('.irp-pagination');
         if (!paginationContainer) return;
 
-        var totalPages = Math.ceil(totalResults / PAGE_SIZE);
+        const totalPages = Math.ceil(totalResults / PAGE_SIZE);
         if (totalPages <= 1) {
             paginationContainer.innerHTML = '';
             return;
         }
 
-        var start = currentPage * PAGE_SIZE + 1;
-        var end = Math.min((currentPage + 1) * PAGE_SIZE, totalResults);
+        const start = currentPage * PAGE_SIZE + 1;
+        const end = Math.min((currentPage + 1) * PAGE_SIZE, totalResults);
 
-        var html = '<span class="irp-page-info">Showing ' + start + '-' + end + ' of ' + totalResults + ' results</span>'
+        const html = '<span class="irp-page-info">Showing ' + start + '-' + end + ' of ' + totalResults + ' results</span>'
             + '<div class="irp-page-buttons">'
             + '<button type="button" class="irp-page-btn" data-page="' + (currentPage - 1) + '"' + (currentPage === 0 ? ' disabled' : '') + '>Prev</button>'
             + '<button type="button" class="irp-page-btn" data-page="' + (currentPage + 1) + '"' + (currentPage >= totalPages - 1 ? ' disabled' : '') + '>Next</button>'
@@ -579,17 +587,17 @@
     }
 
     function updateRMPCells(normalizedName) {
-        var teacher = rmpDataMap.get(normalizedName);
-        var rows = document.querySelectorAll('.irp-table tbody tr[data-crn]');
+        const teacher = rmpDataMap.get(normalizedName);
+        const rows = document.querySelectorAll('.irp-table tbody tr[data-crn]');
 
-        for (var i = 0; i < rows.length; i++) {
-            var profElement = rows[i].querySelector('.irp-professor');
+        for (let i = 0; i < rows.length; i++) {
+            const profElement = rows[i].querySelector('.irp-professor');
             if (!profElement) continue;
 
-            var rowNormalized = normalizeProfessorName(profElement.dataset.name).toLowerCase();
+            const rowNormalized = normalizeProfessorName(profElement.dataset.name).toLowerCase();
             if (rowNormalized !== normalizedName) continue;
 
-            var cells = rows[i].querySelectorAll('td');
+            const cells = rows[i].querySelectorAll('td');
 
             if (teacher.error || teacher.wouldTakeAgainPercent === -1) {
                 cells[8].innerHTML = '<span class="irp-text-muted">N/A</span>';
@@ -604,23 +612,23 @@
     }
 
     function loadRMPDataForResults(results) {
-        var professors = new Set();
-        for (var i = 0; i < results.length; i++) {
-            var faculty = results[i].faculty && results[i].faculty[0];
+        const professors = new Set();
+        for (let i = 0; i < results.length; i++) {
+            const faculty = results[i].faculty && results[i].faculty[0];
             if (faculty && faculty.displayName) {
                 professors.add(faculty.displayName);
             }
         }
 
         professors.forEach(function (displayName) {
-            var normalized = normalizeProfessorName(displayName).toLowerCase();
+            const normalized = normalizeProfessorName(displayName).toLowerCase();
             if (rmpDataMap.has(normalized)) {
                 updateRMPCells(normalized);
                 return;
             }
 
-            var professorName = normalizeProfessorName(displayName);
-            var port = chrome.runtime.connect({ name: 'professor-rating' });
+            const professorName = normalizeProfessorName(displayName);
+            const port = chrome.runtime.connect({ name: 'professor-rating' });
             port.postMessage({ professorName: professorName });
             port.onMessage.addListener(function (teacher) {
                 rmpDataMap.set(normalized, teacher);
@@ -630,26 +638,26 @@
     }
 
     function updateGradeCells(normalizedName) {
-        var gradeData = gradeDataMap.get(normalizedName);
-        var rows = document.querySelectorAll('.irp-table tbody tr[data-crn]');
+        const gradeData = gradeDataMap.get(normalizedName);
+        const rows = document.querySelectorAll('.irp-table tbody tr[data-crn]');
 
-        for (var i = 0; i < rows.length; i++) {
-            var profElement = rows[i].querySelector('.irp-professor');
+        for (let i = 0; i < rows.length; i++) {
+            const profElement = rows[i].querySelector('.irp-professor');
             if (!profElement) continue;
 
-            var rowNormalized = normalizeProfessorName(profElement.dataset.name).toLowerCase();
+            const rowNormalized = normalizeProfessorName(profElement.dataset.name).toLowerCase();
             if (rowNormalized !== normalizedName) continue;
 
-            var cell = rows[i].querySelectorAll('td')[11];
+            const cell = rows[i].querySelectorAll('td')[11];
             if (!gradeData || gradeData.length === 0) {
                 cell.innerHTML = '<span class="irp-text-muted">N/A</span>';
                 continue;
             }
 
-            var totals = { a: 0, b: 0, c: 0, d: 0, f: 0 };
-            var count = gradeData.length;
-            for (var j = 0; j < count; j++) {
-                var row = gradeData[j].data;
+            const totals = { a: 0, b: 0, c: 0, d: 0, f: 0 };
+            const count = gradeData.length;
+            for (let j = 0; j < count; j++) {
+                const row = gradeData[j].data;
                 totals.a += parseFloat(row[4]) || 0;
                 totals.b += parseFloat(row[5]) || 0;
                 totals.c += parseFloat(row[6]) || 0;
@@ -657,11 +665,11 @@
                 totals.f += parseFloat(row[8]) || 0;
             }
 
-            var averageA = Math.round(totals.a / count);
-            var averageB = Math.round(totals.b / count);
-            var averageC = Math.round(totals.c / count);
-            var averageD = Math.round(totals.d / count);
-            var averageF = Math.round(totals.f / count);
+            const averageA = Math.round(totals.a / count);
+            const averageB = Math.round(totals.b / count);
+            const averageC = Math.round(totals.c / count);
+            const averageD = Math.round(totals.d / count);
+            const averageF = Math.round(totals.f / count);
 
             cell.innerHTML = '<div class="irp-grade-bar" title="A:' + averageA + '% B:' + averageB + '% C:' + averageC + '% D:' + averageD + '% F:' + averageF + '%">'
                 + '<div class="irp-grade-a" style="width:' + averageA + '%"></div>'
@@ -674,24 +682,24 @@
     }
 
     function loadGradeDataForResults(results) {
-        var professors = new Set();
-        for (var i = 0; i < results.length; i++) {
-            var faculty = results[i].faculty && results[i].faculty[0];
+        const professors = new Set();
+        for (let i = 0; i < results.length; i++) {
+            const faculty = results[i].faculty && results[i].faculty[0];
             if (faculty && faculty.displayName) professors.add(faculty.displayName);
         }
 
         professors.forEach(function (displayName) {
-            var normalized = normalizeProfessorName(displayName).toLowerCase();
+            const normalized = normalizeProfessorName(displayName).toLowerCase();
             if (gradeDataMap.has(normalized)) {
                 updateGradeCells(normalized);
                 return;
             }
 
-            var name = normalizeProfessorName(displayName);
-            var nameParts = name.split(' ');
+            const name = normalizeProfessorName(displayName);
+            const nameParts = name.split(' ');
             if (nameParts.length < 2) return;
 
-            var port = chrome.runtime.connect({ name: 'grade-distribution' });
+            const port = chrome.runtime.connect({ name: 'grade-distribution' });
             port.postMessage({ type: 'gradeDistribution', professor: { firstName: nameParts[0], lastName: nameParts[nameParts.length - 1] } });
             port.onMessage.addListener(function (response) {
                 if (response.type === 'gradeDistribution') {
@@ -703,8 +711,8 @@
     }
 
     function updateSortIndicators() {
-        var headers = document.querySelectorAll('.irp-table thead th[data-sort-key]');
-        for (var i = 0; i < headers.length; i++) {
+        const headers = document.querySelectorAll('.irp-table thead th[data-sort-key]');
+        for (let i = 0; i < headers.length; i++) {
             headers[i].classList.remove('irp-sort-asc', 'irp-sort-desc');
             if (headers[i].dataset.sortKey === sortColumn) {
                 headers[i].classList.add(sortDirection === 'asc' ? 'irp-sort-asc' : 'irp-sort-desc');
@@ -721,11 +729,11 @@
         }
 
         currentSearchResults.sort(function (a, b) {
-            var nameA = normalizeProfessorName(a.faculty && a.faculty[0] ? a.faculty[0].displayName : '').toLowerCase();
-            var nameB = normalizeProfessorName(b.faculty && b.faculty[0] ? b.faculty[0].displayName : '').toLowerCase();
-            var dataA = rmpDataMap.get(nameA);
-            var dataB = rmpDataMap.get(nameB);
-            var valA, valB;
+            const nameA = normalizeProfessorName(a.faculty && a.faculty[0] ? a.faculty[0].displayName : '').toLowerCase();
+            const nameB = normalizeProfessorName(b.faculty && b.faculty[0] ? b.faculty[0].displayName : '').toLowerCase();
+            const dataA = rmpDataMap.get(nameA);
+            const dataB = rmpDataMap.get(nameB);
+            let valA, valB;
 
             if (key === 'rmpRating') {
                 valA = (dataA && !dataA.error) ? dataA.avgRating : -1;
@@ -737,8 +745,8 @@
                 valA = (dataA && !dataA.error) ? dataA.wouldTakeAgainPercent : -1;
                 valB = (dataB && !dataB.error) ? dataB.wouldTakeAgainPercent : -1;
             } else if (key === 'grades') {
-                var gradeA = gradeDataMap.get(nameA);
-                var gradeB = gradeDataMap.get(nameB);
+                const gradeA = gradeDataMap.get(nameA);
+                const gradeB = gradeDataMap.get(nameB);
                 valA = computeAverageA(gradeA);
                 valB = computeAverageA(gradeB);
             }
@@ -753,11 +761,11 @@
     }
 
     function handleSortClick(event) {
-        var header = event.target.closest('th[data-sort-key]');
+        const header = event.target.closest('th[data-sort-key]');
         if (!header) return;
 
-        var key = header.dataset.sortKey;
-        var CLIENT_SORT_KEYS = ['rmpRating', 'rmpDifficulty', 'rmpWTA', 'grades'];
+        const key = header.dataset.sortKey;
+        const CLIENT_SORT_KEYS = ['rmpRating', 'rmpDifficulty', 'rmpWTA', 'grades'];
 
         if (CLIENT_SORT_KEYS.indexOf(key) !== -1) {
             sortResultsClientSide(key);
@@ -775,12 +783,12 @@
     }
 
     function fetchDetailHTML(endpoint, term, crn) {
-        var url = BASE_PATH + '/searchResults/' + endpoint + '?term=' + term + '&courseReferenceNumber=' + crn;
+        const url = BASE_PATH + '/searchResults/' + endpoint + '?term=' + term + '&courseReferenceNumber=' + crn;
         return fetch(url).then(function (response) {
             return response.text();
         }).then(function (html) {
-            var parser = new DOMParser();
-            var doc = parser.parseFromString(html, 'text/html');
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
             return doc.body.textContent.trim() || null;
         }).catch(function () {
             return null;
@@ -788,34 +796,34 @@
     }
 
     function renderGradeBars(chartId, gradeData, selection) {
-        var chart = document.getElementById(chartId);
+        const chart = document.getElementById(chartId);
         if (!chart) return;
 
-        var grades;
-        var GRADE_LABELS = ['A', 'B', 'C', 'D', 'F'];
-        var GRADE_COLORS = ['#4caf50', '#2196f3', '#ffc107', '#ff9800', '#f44336'];
+        let grades;
+        const GRADE_LABELS = ['A', 'B', 'C', 'D', 'F'];
+        const GRADE_COLORS = ['#4caf50', '#2196f3', '#ffc107', '#ff9800', '#f44336'];
 
         if (selection === 'all') {
-            var totals = [0, 0, 0, 0, 0];
-            for (var i = 0; i < gradeData.length; i++) {
-                for (var j = 0; j < 5; j++) {
+            const totals = [0, 0, 0, 0, 0];
+            for (let i = 0; i < gradeData.length; i++) {
+                for (let j = 0; j < 5; j++) {
                     totals[j] += parseFloat(gradeData[i].data[4 + j]) || 0;
                 }
             }
             grades = totals.map(function (total) { return Math.round(total / gradeData.length); });
         } else {
-            var entry = gradeData[parseInt(selection)];
+            const entry = gradeData[parseInt(selection)];
             grades = [];
-            for (var k = 0; k < 5; k++) {
+            for (let k = 0; k < 5; k++) {
                 grades.push(parseInt(entry.data[4 + k]) || 0);
             }
         }
 
-        var maxPercent = Math.max.apply(null, grades) || 1;
-        var barsHTML = '';
+        const maxPercent = Math.max.apply(null, grades) || 1;
+        let barsHTML = '';
 
-        for (var g = 0; g < 5; g++) {
-            var height = Math.round((grades[g] / maxPercent) * 80);
+        for (let g = 0; g < 5; g++) {
+            const height = Math.round((grades[g] / maxPercent) * 80);
             barsHTML += '<div class="irp-bar-wrapper">'
                 + '<div class="irp-bar-value">' + grades[g] + '%</div>'
                 + '<div class="irp-bar" style="height:' + height + 'px;background:' + GRADE_COLORS[g] + '"></div>'
@@ -827,23 +835,23 @@
     }
 
     function renderDetailGradeChart(section, container) {
-        var faculty = section.faculty && section.faculty[0];
+        const faculty = section.faculty && section.faculty[0];
         if (!faculty) return;
 
-        var normalized = normalizeProfessorName(faculty.displayName).toLowerCase();
-        var gradeData = gradeDataMap.get(normalized);
+        const normalized = normalizeProfessorName(faculty.displayName).toLowerCase();
+        const gradeData = gradeDataMap.get(normalized);
 
         if (!gradeData || gradeData.length === 0) {
             container.insertAdjacentHTML('beforeend', '<div class="irp-detail-section"><h4>Grade Distribution</h4><p class="irp-text-muted">No grade data available</p></div>');
             return;
         }
 
-        var optionsHTML = '<option value="all">All Semesters (Average)</option>';
-        for (var i = 0; i < gradeData.length; i++) {
-            optionsHTML += '<option value="' + i + '">' + gradeData[i].semester + ' ' + gradeData[i].year + ' — ' + gradeData[i].data[0] + ' ' + gradeData[i].data[1] + '</option>';
+        let optionsHTML = '<option value="all">All Semesters (Average)</option>';
+        for (let i = 0; i < gradeData.length; i++) {
+            optionsHTML += '<option value="' + i + '">' + escapeHTML(gradeData[i].semester) + ' ' + escapeHTML(gradeData[i].year) + ' — ' + escapeHTML(gradeData[i].data[0]) + ' ' + escapeHTML(gradeData[i].data[1]) + '</option>';
         }
 
-        var chartId = 'irp-grade-chart-' + section.courseReferenceNumber;
+        const chartId = 'irp-grade-chart-' + section.courseReferenceNumber;
         container.insertAdjacentHTML('beforeend',
             '<div class="irp-detail-section">'
             + '<h4>Grade Distribution</h4>'
@@ -860,14 +868,14 @@
     }
 
     function renderDetailRMPCard(section, container) {
-        var faculty = section.faculty && section.faculty[0];
+        const faculty = section.faculty && section.faculty[0];
         if (!faculty) {
             container.innerHTML = '<p class="irp-text-muted">No professor assigned</p>';
             return;
         }
 
-        var normalized = normalizeProfessorName(faculty.displayName).toLowerCase();
-        var teacher = rmpDataMap.get(normalized);
+        const normalized = normalizeProfessorName(faculty.displayName).toLowerCase();
+        const teacher = rmpDataMap.get(normalized);
 
         if (!teacher) {
             container.innerHTML = '<p class="irp-text-muted">Loading RMP data...</p>';
@@ -891,31 +899,31 @@
     }
 
     function renderDetailPanel(detailRow, section, details) {
-        var panel = detailRow.querySelector('.irp-detail-panel');
+        const panel = detailRow.querySelector('.irp-detail-panel');
 
-        var infoHTML = '';
-        if (details.description) infoHTML += '<div class="irp-detail-section"><h4>Description</h4><p>' + details.description + '</p></div>';
-        if (details.meetingTimes) infoHTML += '<div class="irp-detail-section"><h4>Meeting Times</h4><p>' + details.meetingTimes + '</p></div>';
-        if (details.fees) infoHTML += '<div class="irp-detail-section"><h4>Fees</h4><p>' + details.fees + '</p></div>';
-        if (details.attributes) infoHTML += '<div class="irp-detail-section"><h4>Attributes</h4><p>' + details.attributes + '</p></div>';
-        if (details.enrollment) infoHTML += '<div class="irp-detail-section"><h4>Enrollment</h4><p>' + details.enrollment + '</p></div>';
+        let infoHTML = '';
+        if (details.description) infoHTML += '<div class="irp-detail-section"><h4>Description</h4><p>' + escapeHTML(details.description) + '</p></div>';
+        if (details.meetingTimes) infoHTML += '<div class="irp-detail-section"><h4>Meeting Times</h4><p>' + escapeHTML(details.meetingTimes) + '</p></div>';
+        if (details.fees) infoHTML += '<div class="irp-detail-section"><h4>Fees</h4><p>' + escapeHTML(details.fees) + '</p></div>';
+        if (details.attributes) infoHTML += '<div class="irp-detail-section"><h4>Attributes</h4><p>' + escapeHTML(details.attributes) + '</p></div>';
+        if (details.enrollment) infoHTML += '<div class="irp-detail-section"><h4>Enrollment</h4><p>' + escapeHTML(details.enrollment) + '</p></div>';
         panel.querySelector('.irp-detail-info-content').innerHTML = infoHTML || '<p class="irp-text-muted">No additional info</p>';
 
-        var reqsHTML = '';
-        if (details.prerequisites) reqsHTML += '<div class="irp-detail-section"><h4>Prerequisites</h4><p>' + details.prerequisites + '</p></div>';
-        if (details.corequisites) reqsHTML += '<div class="irp-detail-section"><h4>Corequisites</h4><p>' + details.corequisites + '</p></div>';
-        if (details.restrictions) reqsHTML += '<div class="irp-detail-section"><h4>Restrictions</h4><p>' + details.restrictions + '</p></div>';
-        if (details.linkedSections) reqsHTML += '<div class="irp-detail-section"><h4>Linked Sections</h4><p>' + details.linkedSections + '</p></div>';
+        let reqsHTML = '';
+        if (details.prerequisites) reqsHTML += '<div class="irp-detail-section"><h4>Prerequisites</h4><p>' + escapeHTML(details.prerequisites) + '</p></div>';
+        if (details.corequisites) reqsHTML += '<div class="irp-detail-section"><h4>Corequisites</h4><p>' + escapeHTML(details.corequisites) + '</p></div>';
+        if (details.restrictions) reqsHTML += '<div class="irp-detail-section"><h4>Restrictions</h4><p>' + escapeHTML(details.restrictions) + '</p></div>';
+        if (details.linkedSections) reqsHTML += '<div class="irp-detail-section"><h4>Linked Sections</h4><p>' + escapeHTML(details.linkedSections) + '</p></div>';
         panel.querySelector('.irp-detail-reqs-content').innerHTML = reqsHTML || '<p class="irp-text-muted">No requirements</p>';
 
-        var rmpContent = panel.querySelector('.irp-detail-rmp-content');
+        const rmpContent = panel.querySelector('.irp-detail-rmp-content');
         renderDetailRMPCard(section, rmpContent);
         renderDetailGradeChart(section, rmpContent);
     }
 
     function loadDetailData(section, detailRow) {
-        var term = currentTerm;
-        var crn = section.courseReferenceNumber;
+        const term = currentTerm;
+        const crn = section.courseReferenceNumber;
 
         Promise.allSettled([
             fetchDetailHTML('getCourseDescription', term, crn),
@@ -945,10 +953,10 @@
     function handleRowClick(event) {
         if (event.target.closest('.irp-btn-add, .irp-btn-added')) return;
 
-        var row = event.target.closest('tr[data-crn]');
+        const row = event.target.closest('tr[data-crn]');
         if (!row) return;
 
-        var existingDetail = row.nextElementSibling;
+        const existingDetail = row.nextElementSibling;
         if (existingDetail && existingDetail.classList.contains('irp-detail-row')) {
             existingDetail.remove();
             row.classList.remove('irp-row-expanded');
@@ -957,13 +965,13 @@
 
         row.classList.add('irp-row-expanded');
 
-        var crn = row.dataset.crn;
-        var section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
+        const crn = row.dataset.crn;
+        const section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
         if (!section) return;
 
-        var detailRow = document.createElement('tr');
+        const detailRow = document.createElement('tr');
         detailRow.className = 'irp-detail-row';
-        var detailCell = document.createElement('td');
+        const detailCell = document.createElement('td');
         detailCell.colSpan = 17;
 
         detailCell.innerHTML = '<div class="irp-detail-panel">'
@@ -982,19 +990,19 @@
         if (page === undefined) page = 0;
         currentPage = page;
 
-        var params = new URLSearchParams();
+        const params = new URLSearchParams();
         params.set('term', currentTerm);
         params.set('pageOffset', String(page * PAGE_SIZE));
         params.set('pageMaxSize', String(PAGE_SIZE));
         params.set('sortColumn', sortColumn);
         params.set('sortDirection', sortDirection);
 
-        var filterKeys = Object.keys(activeFilters);
-        for (var i = 0; i < filterKeys.length; i++) {
-            var key = filterKeys[i];
-            var value = activeFilters[key];
+        const filterKeys = Object.keys(activeFilters);
+        for (let i = 0; i < filterKeys.length; i++) {
+            const key = filterKeys[i];
+            const value = activeFilters[key];
             if (key === 'txt_creditHourRange') {
-                var parts = value.code.split('-');
+                const parts = value.code.split('-');
                 if (parts[0]) params.set('txt_credithourlow', parts[0]);
                 if (parts[1]) params.set('txt_credithourhigh', parts[1]);
             } else {
@@ -1057,7 +1065,7 @@
     }
 
     function updateCartBadge() {
-        var badge = document.querySelector('.irp-cart-badge');
+        const badge = document.querySelector('.irp-cart-badge');
         if (!badge) return;
 
         badge.textContent = cartItems.length;
@@ -1070,11 +1078,11 @@
     }
 
     function updateAddButtons() {
-        var buttons = document.querySelectorAll('.irp-btn-add, .irp-btn-added');
+        const buttons = document.querySelectorAll('.irp-btn-add, .irp-btn-added');
 
-        for (var i = 0; i < buttons.length; i++) {
-            var crn = buttons[i].dataset.crn;
-            var inCart = cartItems.some(function (item) { return item.courseReferenceNumber === crn; });
+        for (let i = 0; i < buttons.length; i++) {
+            const crn = buttons[i].dataset.crn;
+            const inCart = cartItems.some(function (item) { return item.courseReferenceNumber === crn; });
 
             if (inCart) {
                 buttons[i].className = 'irp-btn-added';
@@ -1091,8 +1099,8 @@
     }
 
     function openDrawer() {
-        var drawer = document.querySelector('.irp-drawer');
-        var overlay = document.querySelector('.irp-drawer-overlay');
+        const drawer = document.querySelector('.irp-drawer');
+        const overlay = document.querySelector('.irp-drawer-overlay');
         if (!drawer || !overlay) return;
 
         drawer.classList.remove('irp-drawer-closed');
@@ -1100,7 +1108,7 @@
     }
 
     function renderMiniSchedule() {
-        var container = document.querySelector('.irp-drawer-schedule');
+        const container = document.querySelector('.irp-drawer-schedule');
         if (!container) return;
 
         if (cartItems.length === 0) {
@@ -1108,17 +1116,17 @@
             return;
         }
 
-        var DAYS = ['M', 'T', 'W', 'R', 'F'];
-        var DAY_MAP = { M: 'monday', T: 'tuesday', W: 'wednesday', R: 'thursday', F: 'friday' };
-        var START_HOUR = 7;
-        var END_HOUR = 22;
-        var HOUR_HEIGHT = 18;
-        var SCHEDULE_COLORS = ['#522D80', '#F56600', '#2196f3', '#4caf50', '#ff9800', '#e91e63'];
+        const DAYS = ['M', 'T', 'W', 'R', 'F'];
+        const DAY_MAP = { M: 'monday', T: 'tuesday', W: 'wednesday', R: 'thursday', F: 'friday' };
+        const START_HOUR = 7;
+        const END_HOUR = 22;
+        const HOUR_HEIGHT = 18;
+        const SCHEDULE_COLORS = ['#522D80', '#F56600', '#2196f3', '#4caf50', '#ff9800', '#e91e63'];
 
-        var html = '<div class="irp-schedule">';
+        let html = '<div class="irp-schedule">';
         html += '<div class="irp-schedule-header">';
 
-        for (var d = 0; d < DAYS.length; d++) {
+        for (let d = 0; d < DAYS.length; d++) {
             html += '<div class="irp-schedule-day-label">' + DAYS[d] + '</div>';
         }
 
@@ -1127,29 +1135,29 @@
 
         html += '<div class="irp-schedule-times">';
 
-        for (var h = START_HOUR; h <= END_HOUR; h++) {
-            var label = h > 12 ? (h - 12) + 'p' : (h === 12 ? '12p' : h + 'a');
+        for (let h = START_HOUR; h <= END_HOUR; h++) {
+            const label = h > 12 ? (h - 12) + 'p' : (h === 12 ? '12p' : h + 'a');
             html += '<div class="irp-schedule-time" style="height:' + HOUR_HEIGHT + 'px">' + label + '</div>';
         }
 
         html += '</div>';
 
-        for (var dayIndex = 0; dayIndex < DAYS.length; dayIndex++) {
+        for (let dayIndex = 0; dayIndex < DAYS.length; dayIndex++) {
             html += '<div class="irp-schedule-column" style="height:' + ((END_HOUR - START_HOUR + 1) * HOUR_HEIGHT) + 'px">';
 
-            for (var c = 0; c < cartItems.length; c++) {
-                var meeting = cartItems[c].meetingsFaculty && cartItems[c].meetingsFaculty[0] ? cartItems[c].meetingsFaculty[0].meetingTime : null;
+            for (let c = 0; c < cartItems.length; c++) {
+                const meeting = cartItems[c].meetingsFaculty && cartItems[c].meetingsFaculty[0] ? cartItems[c].meetingsFaculty[0].meetingTime : null;
                 if (!meeting || !meeting[DAY_MAP[DAYS[dayIndex]]]) continue;
 
-                var startMinutes = timeToMinutes(meeting.beginTime) - (START_HOUR * 60);
-                var endMinutes = timeToMinutes(meeting.endTime) - (START_HOUR * 60);
-                var top = (startMinutes / 60) * HOUR_HEIGHT;
-                var height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
-                var color = SCHEDULE_COLORS[c % SCHEDULE_COLORS.length];
+                const startMinutes = timeToMinutes(meeting.beginTime) - (START_HOUR * 60);
+                const endMinutes = timeToMinutes(meeting.endTime) - (START_HOUR * 60);
+                const top = (startMinutes / 60) * HOUR_HEIGHT;
+                const height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
+                const color = SCHEDULE_COLORS[c % SCHEDULE_COLORS.length];
 
                 html += '<div class="irp-schedule-block" style="top:' + top + 'px;height:' + Math.max(height, 10) + 'px;background:' + color + '"'
-                    + ' title="' + cartItems[c].subject + ' ' + cartItems[c].courseNumber + '">'
-                    + cartItems[c].subject.substring(0, 4)
+                    + ' title="' + escapeHTML(cartItems[c].subject) + ' ' + escapeHTML(cartItems[c].courseNumber) + '">'
+                    + escapeHTML(cartItems[c].subject.substring(0, 4))
                     + '</div>';
             }
 
@@ -1161,31 +1169,31 @@
     }
 
     function checkConflicts() {
-        var conflicts = [];
+        const conflicts = [];
 
-        for (var i = 0; i < cartItems.length; i++) {
-            for (var j = i + 1; j < cartItems.length; j++) {
-                var meetingA = cartItems[i].meetingsFaculty && cartItems[i].meetingsFaculty[0] ? cartItems[i].meetingsFaculty[0].meetingTime : null;
-                var meetingB = cartItems[j].meetingsFaculty && cartItems[j].meetingsFaculty[0] ? cartItems[j].meetingsFaculty[0].meetingTime : null;
+        for (let i = 0; i < cartItems.length; i++) {
+            for (let j = i + 1; j < cartItems.length; j++) {
+                const meetingA = cartItems[i].meetingsFaculty && cartItems[i].meetingsFaculty[0] ? cartItems[i].meetingsFaculty[0].meetingTime : null;
+                const meetingB = cartItems[j].meetingsFaculty && cartItems[j].meetingsFaculty[0] ? cartItems[j].meetingsFaculty[0].meetingTime : null;
                 if (!meetingA || !meetingB) continue;
 
-                var sharedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].filter(function (day) {
+                const sharedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].filter(function (day) {
                     return meetingA[day] && meetingB[day];
                 });
                 if (sharedDays.length === 0) continue;
 
-                var startA = timeToMinutes(meetingA.beginTime);
-                var endA = timeToMinutes(meetingA.endTime);
-                var startB = timeToMinutes(meetingB.beginTime);
-                var endB = timeToMinutes(meetingB.endTime);
+                const startA = timeToMinutes(meetingA.beginTime);
+                const endA = timeToMinutes(meetingA.endTime);
+                const startB = timeToMinutes(meetingB.beginTime);
+                const endB = timeToMinutes(meetingB.endTime);
 
                 if (startA < endB && startB < endA) {
-                    conflicts.push(cartItems[i].subject + ' ' + cartItems[i].courseNumber + ' & ' + cartItems[j].subject + ' ' + cartItems[j].courseNumber);
+                    conflicts.push(escapeHTML(cartItems[i].subject) + ' ' + escapeHTML(cartItems[i].courseNumber) + ' & ' + escapeHTML(cartItems[j].subject) + ' ' + escapeHTML(cartItems[j].courseNumber));
                 }
             }
         }
 
-        var conflictContainer = document.querySelector('.irp-drawer-conflicts');
+        const conflictContainer = document.querySelector('.irp-drawer-conflicts');
         if (!conflictContainer) return;
 
         if (conflicts.length > 0) {
@@ -1200,38 +1208,38 @@
     }
 
     function renderCart() {
-        var coursesContainer = document.querySelector('.irp-drawer-courses');
+        const coursesContainer = document.querySelector('.irp-drawer-courses');
         if (!coursesContainer) return;
 
-        var totalCredits = 0;
+        let totalCredits = 0;
 
-        for (var i = 0; i < cartItems.length; i++) {
+        for (let i = 0; i < cartItems.length; i++) {
             totalCredits += cartItems[i].creditHours || cartItems[i].creditHourLow || 0;
         }
 
-        var countEl = document.querySelector('.irp-cart-count');
+        const countEl = document.querySelector('.irp-cart-count');
         if (countEl) countEl.textContent = cartItems.length;
 
-        var creditsEl = document.querySelector('.irp-cart-credits');
+        const creditsEl = document.querySelector('.irp-cart-credits');
         if (creditsEl) creditsEl.textContent = totalCredits + ' Credit Hours';
 
         updateCartBadge();
 
-        var html = '';
+        let html = '';
 
-        for (var j = 0; j < cartItems.length; j++) {
-            var section = cartItems[j];
-            var meeting = section.meetingsFaculty && section.meetingsFaculty[0] ? section.meetingsFaculty[0].meetingTime : null;
-            var days = meeting ? formatDays(meeting) : 'TBA';
-            var time = meeting ? formatTime(meeting.beginTime) + '-' + formatTime(meeting.endTime) : '';
+        for (let j = 0; j < cartItems.length; j++) {
+            const section = cartItems[j];
+            const meeting = section.meetingsFaculty && section.meetingsFaculty[0] ? section.meetingsFaculty[0].meetingTime : null;
+            const days = meeting ? formatDays(meeting) : 'TBA';
+            const time = meeting ? formatTime(meeting.beginTime) + '-' + formatTime(meeting.endTime) : '';
 
-            html += '<div class="irp-cart-card" data-crn="' + section.courseReferenceNumber + '">'
+            html += '<div class="irp-cart-card" data-crn="' + escapeHTML(section.courseReferenceNumber) + '">'
                 + '<div class="irp-cart-card-header">'
-                + '<span class="irp-cart-card-title">' + section.subject + ' ' + section.courseNumber + '-' + section.sequenceNumber + '</span>'
-                + '<button type="button" class="irp-cart-remove" data-crn="' + section.courseReferenceNumber + '" aria-label="Remove">&times;</button>'
+                + '<span class="irp-cart-card-title">' + escapeHTML(section.subject) + ' ' + escapeHTML(section.courseNumber) + '-' + escapeHTML(section.sequenceNumber) + '</span>'
+                + '<button type="button" class="irp-cart-remove" data-crn="' + escapeHTML(section.courseReferenceNumber) + '" aria-label="Remove">&times;</button>'
                 + '</div>'
-                + '<div class="irp-cart-card-detail">' + days + ' ' + time + '</div>'
-                + '<div class="irp-cart-card-detail">CRN: ' + section.courseReferenceNumber + '</div>'
+                + '<div class="irp-cart-card-detail">' + escapeHTML(days) + ' ' + escapeHTML(time) + '</div>'
+                + '<div class="irp-cart-card-detail">CRN: ' + escapeHTML(section.courseReferenceNumber) + '</div>'
                 + '</div>';
         }
 
@@ -1242,25 +1250,51 @@
     }
 
     function addToCart(section) {
-        if (cartItems.some(function (item) { return item.courseReferenceNumber === section.courseReferenceNumber; })) return;
+        const crn = section.courseReferenceNumber;
+        if (cartItems.some(function (item) { return item.courseReferenceNumber === crn; })) return;
 
-        cartItems.push(section);
-        renderCart();
-        openDrawer();
-        updateAddButtons();
+        fetch(BASE_PATH + '/classRegistration/addRegistrationItem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'term=' + encodeURIComponent(currentTerm)
+                + '&courseReferenceNumber=' + encodeURIComponent(crn)
+                + '&synchronizerToken=' + encodeURIComponent(synchronizerToken)
+        })
+        .then(function (response) { return response.json(); })
+        .then(function () {
+            cartItems.push(section);
+            renderCart();
+            openDrawer();
+            updateAddButtons();
+        })
+        .catch(function (error) {
+            console.error('[IRoar Premium] Failed to add course:', error);
+        });
     }
 
     function removeFromCart(crn) {
-        cartItems = cartItems.filter(function (item) { return item.courseReferenceNumber !== crn; });
-        renderCart();
-        updateAddButtons();
+        fetch(BASE_PATH + '/classRegistration/dropRegistrationItem', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'term=' + encodeURIComponent(currentTerm)
+                + '&courseReferenceNumber=' + encodeURIComponent(crn)
+                + '&synchronizerToken=' + encodeURIComponent(synchronizerToken)
+        })
+        .then(function () {
+            cartItems = cartItems.filter(function (item) { return item.courseReferenceNumber !== crn; });
+            renderCart();
+            updateAddButtons();
+        })
+        .catch(function (error) {
+            console.error('[IRoar Premium] Failed to remove course:', error);
+        });
     }
 
     function addByCRN(crnValue) {
-        var crn = crnValue.trim();
+        const crn = crnValue.trim();
         if (!crn) return;
 
-        var section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
+        const section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
 
         if (section) {
             addToCart(section);
@@ -1270,14 +1304,14 @@
     }
 
     function showDrawerError(message) {
-        var existing = document.querySelector('.irp-drawer-error');
+        const existing = document.querySelector('.irp-drawer-error');
         if (existing) existing.remove();
 
-        var errorEl = document.createElement('div');
+        const errorEl = document.createElement('div');
         errorEl.className = 'irp-drawer-error';
         errorEl.textContent = message;
 
-        var footer = document.querySelector('.irp-drawer-footer');
+        const footer = document.querySelector('.irp-drawer-footer');
         if (footer) footer.parentNode.insertBefore(errorEl, footer);
 
         setTimeout(function () {
@@ -1286,37 +1320,37 @@
     }
 
     function renderSubmitResult(data) {
-        var existing = document.querySelector('.irp-submit-result');
+        const existing = document.querySelector('.irp-submit-result');
         if (existing) existing.remove();
 
-        var resultEl = document.createElement('div');
+        const resultEl = document.createElement('div');
         resultEl.className = 'irp-submit-result';
-        var html = '';
+        let html = '';
 
         if (Array.isArray(data)) {
-            for (var i = 0; i < data.length; i++) {
-                var item = data[i];
+            for (let i = 0; i < data.length; i++) {
+                const item = data[i];
                 if (item.statusDescription === 'Registered' || item.statusIndicator === 'RS') {
-                    html += '<div class="irp-submit-success">&#10003; ' + (item.subject || '') + ' ' + (item.courseNumber || '') + ' — Registered</div>';
+                    html += '<div class="irp-submit-success">&#10003; ' + escapeHTML(item.subject || '') + ' ' + escapeHTML(item.courseNumber || '') + ' — Registered</div>';
                 } else {
-                    var errorMsg = item.message || item.statusDescription || 'Registration failed';
-                    html += '<div class="irp-submit-error">&#10007; ' + (item.subject || '') + ' ' + (item.courseNumber || '') + ' — ' + errorMsg + '</div>';
+                    const errorMsg = item.message || item.statusDescription || 'Registration failed';
+                    html += '<div class="irp-submit-error">&#10007; ' + escapeHTML(item.subject || '') + ' ' + escapeHTML(item.courseNumber || '') + ' — ' + escapeHTML(errorMsg) + '</div>';
                 }
             }
         } else if (data && data.message) {
-            html = '<div class="irp-submit-error">&#10007; ' + data.message + '</div>';
+            html = '<div class="irp-submit-error">&#10007; ' + escapeHTML(data.message) + '</div>';
         } else {
             html = '<div class="irp-submit-success">&#10003; Registration submitted</div>';
         }
 
         resultEl.innerHTML = html;
 
-        var footer = document.querySelector('.irp-drawer-footer');
+        const footer = document.querySelector('.irp-drawer-footer');
         if (footer) footer.parentNode.insertBefore(resultEl, footer);
     }
 
     function submitRegistration() {
-        var submitButton = document.querySelector('.irp-submit-registration');
+        const submitButton = document.querySelector('.irp-submit-registration');
         if (!submitButton) return;
 
         submitButton.disabled = true;
@@ -1344,12 +1378,27 @@
     function showSessionExpired() {
         if (document.querySelector('.irp-session-banner')) return;
 
-        var banner = document.createElement('div');
+        const banner = document.createElement('div');
         banner.className = 'irp-session-banner';
         banner.innerHTML = 'Session expired. <a href="/StudentRegistrationSsb/ssb/prepareRegistration/prepareRegistration">Log in again</a>';
 
-        var app = document.querySelector('.irp-app');
+        const app = document.querySelector('.irp-app');
         if (app) app.prepend(banner);
+    }
+
+    function loadExistingCart() {
+        fetch(BASE_PATH + '/classRegistration/getRegistrationItems')
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                if (data && Array.isArray(data)) {
+                    cartItems = data;
+                    renderCart();
+                    updateAddButtons();
+                }
+            })
+            .catch(function (error) {
+                console.warn('[IRoar Premium] Could not load existing cart:', error);
+            });
     }
 
     function toggleCartDrawer() {
@@ -1365,7 +1414,7 @@
     }
 
     function toggleSidebar() {
-        var sidebar = document.querySelector('.irp-sidebar');
+        const sidebar = document.querySelector('.irp-sidebar');
 
         if (sidebar) {
             sidebar.classList.toggle('irp-sidebar-open');
@@ -1477,11 +1526,11 @@
             });
         }
 
-        var paginationContainer = document.querySelector('.irp-pagination');
+        const paginationContainer = document.querySelector('.irp-pagination');
 
         if (paginationContainer) {
             paginationContainer.addEventListener('click', function (event) {
-                var pageButton = event.target.closest('.irp-page-btn');
+                const pageButton = event.target.closest('.irp-page-btn');
 
                 if (pageButton) {
                     executeSearch(parseInt(pageButton.dataset.page, 10));
@@ -1489,20 +1538,20 @@
             });
         }
 
-        var resultsContainer = document.querySelector('.irp-results-container');
+        const resultsContainer = document.querySelector('.irp-results-container');
 
         if (resultsContainer) {
             resultsContainer.addEventListener('click', function (event) {
-                var header = event.target.closest('th[data-sort-key]');
+                const header = event.target.closest('th[data-sort-key]');
                 if (header) {
                     handleSortClick(event);
                     return;
                 }
 
-                var addButton = event.target.closest('.irp-btn-add');
+                const addButton = event.target.closest('.irp-btn-add');
                 if (addButton) {
-                    var crn = addButton.dataset.crn;
-                    var section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
+                    const crn = addButton.dataset.crn;
+                    const section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
                     if (section) addToCart(section);
                     return;
                 }
@@ -1523,7 +1572,7 @@
             drawerOverlay.addEventListener('click', toggleCartDrawer);
         }
 
-        var drawer = document.querySelector('.irp-drawer');
+        const drawer = document.querySelector('.irp-drawer');
 
         if (drawer) {
             drawer.addEventListener('click', function (event) {
@@ -1532,14 +1581,14 @@
                     return;
                 }
 
-                var removeButton = event.target.closest('.irp-cart-remove');
+                const removeButton = event.target.closest('.irp-cart-remove');
                 if (removeButton) {
                     removeFromCart(removeButton.dataset.crn);
                     return;
                 }
 
                 if (event.target.closest('.irp-crn-add')) {
-                    var crnInput = document.querySelector('.irp-crn-input');
+                    const crnInput = document.querySelector('.irp-crn-input');
                     if (crnInput) {
                         addByCRN(crnInput.value);
                         crnInput.value = '';
@@ -1552,7 +1601,7 @@
                 }
             });
 
-            var crnInput = drawer.querySelector('.irp-crn-input');
+            const crnInput = drawer.querySelector('.irp-crn-input');
             if (crnInput) {
                 crnInput.addEventListener('keydown', function (event) {
                     if (event.key === 'Enter') {
@@ -1563,7 +1612,7 @@
             }
         }
 
-        var menuToggle = document.querySelector('.irp-menu-toggle');
+        const menuToggle = document.querySelector('.irp-menu-toggle');
 
         if (menuToggle) {
             menuToggle.addEventListener('click', toggleSidebar);
@@ -1576,14 +1625,14 @@
             }
 
             if (event.key === 'Escape') {
-                var drawerEl = document.querySelector('.irp-drawer');
+                const drawerEl = document.querySelector('.irp-drawer');
 
                 if (drawerEl && !drawerEl.classList.contains('irp-drawer-closed')) {
                     toggleCartDrawer();
                     return;
                 }
 
-                var sidebarEl = document.querySelector('.irp-sidebar.irp-sidebar-open');
+                const sidebarEl = document.querySelector('.irp-sidebar.irp-sidebar-open');
 
                 if (sidebarEl) {
                     sidebarEl.classList.remove('irp-sidebar-open');
@@ -1612,6 +1661,7 @@
         }
 
         bindEvents();
+        loadExistingCart();
     }
 
     if (document.readyState === 'loading') {

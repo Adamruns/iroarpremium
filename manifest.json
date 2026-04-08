@@ -28,6 +28,7 @@
         },
         {
             "matches": ["https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/*"],
+            "css": ["registration.css"],
             "js": ["registration.js"],
             "run_at": "document_end"
         },

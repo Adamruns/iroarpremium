@@ -501,6 +501,21 @@ body.irp-active {
     background: var(--irp-dark-orange);
 }
 
+.irp-retry-btn {
+    padding: 4px 12px;
+    background: var(--irp-orange);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.irp-retry-btn:hover {
+    background: var(--irp-dark-orange);
+}
+
 .irp-btn-added {
     padding: 4px 12px;
     background: #e0e0e0;
