@@ -1,6 +1,7 @@
 """Build the Chrome Web Store ZIP from the manifest and packaged grade reports."""
 import argparse
 import json
+import re
 from pathlib import Path
 from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
@@ -12,7 +13,13 @@ def build(output):
     for group in manifest['content_scripts']:
         files.update(group.get('css', []))
         files.update(group.get('js', []))
-    files.update(str(path.relative_to(ROOT)) for path in (ROOT / 'grade_distributions_final').glob('*.csv'))
+    worker = (ROOT / manifest['background']['service_worker']).read_text()
+    listed = set(re.findall(r"'(grade_distributions_final/[^']+\.csv)'", worker))
+    bundled = {str(path.relative_to(ROOT)) for path in (ROOT / 'grade_distributions_final').glob('*.csv')}
+    # The service worker stops loading all grade history when one listed report is missing.
+    if listed != bundled:
+        raise SystemExit(f'Grade reports differ from gradeDistributionFiles. Missing: {sorted(listed - bundled)} Unlisted: {sorted(bundled - listed)}')
+    files.update(listed)
     output.parent.mkdir(parents=True,exist_ok=True)
     with ZipFile(output, 'w') as archive:
         for name in sorted(files):
