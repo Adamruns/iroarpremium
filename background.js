@@ -8,7 +8,7 @@ const SCHOOL_ID = ['U2Nob29sLTI0Mg=='];
 const RMP_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
 
 // In-memory cache for parsed CSV data (persists for service worker lifetime)
-let csvCache = null;
+let csvLoad = null;
 
 // In-memory cache for RMP data (also backed by chrome.storage.local)
 const rmpMemoryCache = new Map();
@@ -72,17 +72,20 @@ function parseCSV(text) {
 }
 
 // Load all CSV data into cache (called once per service worker lifetime)
-async function loadAllCSVData() {
-    if (csvCache !== null) {
-        return csvCache;
-    }
+function loadAllCSVData() {
+    if (!csvLoad) csvLoad = readGradeFiles().catch(error => { csvLoad = null; throw error; });
+    return csvLoad;
+}
+
+async function readGradeFiles() {
 
     console.log('Loading CSV data into cache...');
-    csvCache = [];
+    const csvCache = [];
 
     for (const file of gradeDistributionFiles) {
         const fileURL = chrome.runtime.getURL(file);
         const response = await fetch(fileURL);
+        if (!response.ok) throw new Error('Grade file unavailable: ' + file);
         const csvText = await response.text();
         const rows = parseCSV(csvText);
 

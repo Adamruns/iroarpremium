@@ -1,239 +1,74 @@
-// Inject CSS
-const style = document.createElement('link');
-style.rel = 'stylesheet';
-style.type = 'text/css';
-style.href = chrome.runtime.getURL('styles.css');
-document.head.appendChild(style);
-
-function removePrimary(cell) {
-    cell.innerHTML = cell.innerHTML.replace(/\s*\(Primary\)\s*<br>/, '');
-}
-
-function appendRMP() {
-    const professorCells = document.querySelectorAll('td[data-property="instructor"]');
-
-    if (professorCells.length > 0) {
-        professorCells.forEach((cell) => {
-            const link = cell.querySelector('a[href^="mailto:"]');
-            if (!link || link.dataset.processed === "true") {
-                return;
-            }
-            link.dataset.processed = "true";
-
-            let professorName = link.textContent.trim();
-            if (professorName.includes(',')) {
-                const parts = professorName.split(',');
-                professorName = `${parts[1].trim()} ${parts[0].trim()}`;
-            }
-
-            // Skip if professorName is empty or undefined
-            if (!professorName) {
-                console.warn("Skipped undefined or empty professor name");
-                return;
-            }
-
-
-            try {
-                const port = chrome.runtime.connect({ name: 'professor-rating' });
-                port.postMessage({ professorName });
-                port.onMessage.addListener((teacher) => {
-                    if (teacher.error) {
-                        console.error('Error:', teacher.error);
-                        insertNoProfError(link, professorName);
-                    } else {
-                        const { avgRating, numRatings, avgDifficulty, wouldTakeAgainPercent, legacyId } = teacher;
-                        if (wouldTakeAgainPercent === -1) {
-                            console.error('Error: No ratings found for professor.');
-                            insertNoRatingsError(link, legacyId);
-                            return;
-                        }
-                        insertNumRatings(link, numRatings, legacyId);
-                        insertWouldTakeAgainPercent(link, wouldTakeAgainPercent);
-                        insertAvgDifficulty(link, avgDifficulty);
-                        insertRating(link, avgRating);
-                        insertGradeDistributionLink(link, professorName);  // Add clickable text here
-                    }
-                    removePrimary(cell);
-                });
-            } catch (error) {
-                console.error('Error:', error);
-                insertNoProfError(link, professorName);
-            }
+// Enrich Banner's own Plan Ahead and registration tables in place.
+(() => {
+    const waiting = new WeakSet();
+    function ask(name, message) {
+        return new Promise((resolve, reject) => {
+            const port = chrome.runtime.connect({name});
+            port.onMessage.addListener(data => { resolve(data); port.disconnect(); });
+            port.onDisconnect.addListener(() => reject(new Error(chrome.runtime.lastError?.message || 'Data unavailable')));
+            port.postMessage(message);
         });
-    } else {
     }
-}
-
-appendRMP();
-
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        if (mutation.addedNodes.length) {
-            setTimeout(appendRMP, 100); // Small delay to ensure elements are loaded
+    async function showGrades(button, professor) {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'iroar-grade-dialog';
+        const title = document.createElement('h2');
+        title.textContent = professor + ' · Grade history';
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.textContent = 'Close';
+        const body = document.createElement('div');
+        body.textContent = 'Loading grade history…';
+        dialog.append(title,close,body);
+        document.body.append(dialog);
+        close.addEventListener('click', () => dialog.close());
+        dialog.addEventListener('close', () => { dialog.remove(); button.focus(); }, {once:true});
+        dialog.showModal();
+        const parts = professor.split(/\s+/);
+        try {
+            const result = await ask('grade-distribution',{type:'gradeDistribution',professor:{firstName:parts[0],lastName:parts.at(-1)}});
+            body.textContent = result.data.length ? '' : 'No grade history available.';
+            for (const {semester,year,data} of [...result.data].reverse()) {
+                const item = document.createElement('p');
+                const headline = document.createElement('strong');
+                headline.textContent = [semester, year, '·', data[0], data[1], data[2]].join(' ');
+                item.append(headline, document.createElement('br'), ['A','B','C','D','F','P','F(P)','W','I'].map((g,i)=>g+' '+(data[i+4]||'0%')).join(' · '));
+                body.append(item);
+            }
+        } catch { body.textContent = 'Grade history could not be loaded.'; }
+    }
+    function enhance() {
+        for (const link of document.querySelectorAll('td[data-property="instructor"] a[href^="mailto:"]')) {
+            if (waiting.has(link)) continue;
+            waiting.add(link);
+            const [last,first] = link.textContent.trim().split(',').map(p=>p.trim());
+            const professor = first ? first+' '+last : last;
+            if (!professor) continue;
+            const box = document.createElement('div');
+            box.className = 'iroar-prof';
+            const grades = document.createElement('button');
+            grades.type = 'button'; grades.textContent = 'Grade history';
+            grades.addEventListener('click', () => showGrades(grades, professor));
+            const rating = document.createElement('a');
+            rating.target = '_blank'; rating.rel = 'noopener noreferrer';
+            rating.href = 'https://www.ratemyprofessors.com/search/teachers?query='+encodeURIComponent(professor);
+            rating.textContent = 'Find ratings';
+            box.append(rating, grades);
+            link.after(box);
+            ask('professor-rating',{professorName:professor}).then(data => {
+                if (data.error || !data.numRatings) return;
+                rating.textContent = data.avgRating+'/5 · '+data.numRatings+' ratings';
+                rating.href = 'https://www.ratemyprofessors.com/professor/'+encodeURIComponent(data.legacyId);
+                const stats = document.createElement('small');
+                stats.textContent = 'Difficulty '+data.avgDifficulty+'/5'+(data.wouldTakeAgainPercent >= 0 ? ' · '+Math.round(data.wouldTakeAgainPercent)+'% would take again' : '');
+                box.append(stats);
+            }).catch(() => {});
         }
+    }
+    let frame;
+    const observer = new MutationObserver(() => {
+        if (!frame) frame = requestAnimationFrame(() => { frame = null; enhance(); });
     });
-});
-observer.observe(document.body, { childList: true, subtree: true });
-
-window.addEventListener('hashchange', appendRMP, false);
-
-// Color coding helpers
-function getRatingColor(rating) {
-    if (rating >= 4) return 'rating-good';
-    if (rating >= 3) return 'rating-medium';
-    return 'rating-poor';
-}
-
-function getDifficultyColor(difficulty) {
-    // Lower difficulty is better
-    if (difficulty <= 2.5) return 'rating-good';
-    if (difficulty <= 3.5) return 'rating-medium';
-    return 'rating-poor';
-}
-
-function getWouldTakeAgainColor(percent) {
-    if (percent >= 70) return 'rating-good';
-    if (percent >= 50) return 'rating-medium';
-    return 'rating-poor';
-}
-
-function insertRating(link, avgRating) {
-    const colorClass = getRatingColor(avgRating);
-    link.insertAdjacentHTML('afterend', `<div class="rating"><b>Rating:</b> <span class="${colorClass}">${avgRating}/5</span></div>`);
-}
-
-function insertAvgDifficulty(link, avgDifficulty) {
-    const colorClass = getDifficultyColor(avgDifficulty);
-    link.insertAdjacentHTML('afterend', `<div class="rating"><b>Difficulty:</b> <span class="${colorClass}">${avgDifficulty}/5</span></div>`);
-}
-
-function insertWouldTakeAgainPercent(link, wouldTakeAgainPercent) {
-    const colorClass = getWouldTakeAgainColor(wouldTakeAgainPercent);
-    link.insertAdjacentHTML('afterend', `<div class="rating"><span class="${colorClass}"><b>${Math.round(wouldTakeAgainPercent)}%</b></span> would take again</div>`);
-}
-
-function insertNumRatings(link, numRatings, legacyId) {
-    const profLink = `<a target="_blank" rel="noopener noreferrer" href='https://www.ratemyprofessors.com/professor?tid=${legacyId}'>${numRatings} ratings</a>`;
-    link.insertAdjacentHTML('afterend', `<div class="rating">${profLink}</div>`);
-}
-
-function insertNoRatingsError(link, legacyId) {
-    link.insertAdjacentHTML(
-        'afterend',
-        `<div class="rating"><b>Error:</b> this professor has <a target="_blank" rel="noopener noreferrer" href='https://www.ratemyprofessors.com/search/teachers?query=${legacyId}'>no ratings on RateMyProfessors.</a></div>`
-    );
-}
-
-function insertNoProfError(link, professorName) {
-    link.insertAdjacentHTML(
-        'afterend',
-        `<div class="rating"><b>Professor not found: </b><a target="_blank" rel="noopener noreferrer" href='https://www.ratemyprofessors.com/search/teachers?query=${encodeURIComponent(
-            professorName
-        )}'>Click to Search RMP</a></div>`
-    );
-}
-
-// Function to add "Grade Distribution" clickable text under RMP data
-function insertGradeDistributionLink(link, professorName) {
-    // Check parent cell for existing grade-distribution-link to prevent duplicates
-    const parentCell = link.closest('td');
-    if (parentCell && parentCell.querySelector('.grade-distribution-link')) {
-        return;
-    }
-
-    const gradeLink = document.createElement('div');
-    gradeLink.classList.add('grade-distribution-link');
-    gradeLink.textContent = 'Grade Distribution';
-    gradeLink.style.cursor = 'pointer';
-
-    // Add a custom data attribute to hold the professor's name
-    gradeLink.setAttribute('data-professor', professorName);
-
-    link.insertAdjacentElement('afterend', gradeLink);
-}
-
-
-// Function to fetch grade distribution data from background.js
-function fetchGradeDistribution(professorName) {
-    const nameParts = professorName.split(' ');
-    if (nameParts.length < 2) {
-        console.error("Invalid professor name format. Expected 'First Last'. Received:", professorName);
-        return Promise.resolve([]); // Return an empty result to avoid further errors
-    }
-
-    const firstName = nameParts[0];
-    const lastName = nameParts[nameParts.length - 1]; // Handle middle names by taking last part
-    const port = chrome.runtime.connect({ name: 'grade-distribution' });
-
-    return new Promise((resolve) => {
-        port.postMessage({ type: 'gradeDistribution', professor: { firstName, lastName } });
-
-        port.onMessage.addListener((response) => {
-            if (response.type === 'gradeDistribution') {
-                resolve(response.data);
-            }
-        });
-    });
-}
-
-// Update popup content with grade distribution data
-async function openGradePopup(professorName) {
-
-    const gradeData = await fetchGradeDistribution(professorName);
-
-    let popup = document.querySelector('.grade-distribution-popup');
-    if (!popup) {
-        popup = document.createElement('div');
-        popup.className = 'grade-distribution-popup';
-        popup.innerHTML = `
-            <div class="grade-popup-header">
-                <span class="grade-popup-title">Grade Distribution for ${professorName}</span>
-                <button class="grade-popup-close">&times;</button>
-            </div>
-            <div class="grade-popup-content"></div>
-        `;
-        document.body.appendChild(popup);
-
-        popup.querySelector('.grade-popup-close').addEventListener('click', () => {
-            popup.style.display = 'none';
-        });
-    } else {
-        popup.querySelector('.grade-popup-title').textContent = `Grade Distribution for ${professorName}`;
-    }
-
-    const content = popup.querySelector('.grade-popup-content');
-
-    // Labels for each grade column
-    const gradeLabels = ['A', 'B', 'C', 'D', 'F', 'P', 'F(P)', 'W', 'I'];
-
-    // Reverse the data to display newest first (use spread to avoid mutating original)
-    const reversedData = [...gradeData].reverse();
-
-    // Format grade distribution with labels
-    content.innerHTML = reversedData.length > 0 ? reversedData.map((entry) => {
-        const row = entry.data;
-        // Map the grade percentages with their labels
-        const gradeDistribution = row.slice(4, 13).map((value, index) => {
-            const rawValue = value.replace('%', '').trim(); // Ensure value is clean of any existing '%'
-            return `${rawValue}% (${gradeLabels[index]})`;
-        }).join(', ');
-
-        return `
-            <p><b>Year:</b> ${entry.year}, <b>Semester:</b> ${entry.semester}</p>
-            <p><b>Course:</b> ${row[0]} ${row[1]} ${row[2]}, ${row[3]}</p>
-            <p><b>Distribution:</b> ${gradeDistribution}</p>
-            <hr>
-        `;
-    }).join('') : '<p>No grade distribution data found for this professor.</p>';
-
-    popup.style.display = 'block';
-    popup.style.zIndex = '10000'; // Ensure it's on top
-}
-
-// Event delegation to handle clicks on Grade Distribution links
-document.body.addEventListener('click', (event) => {
-    if (event.target.classList.contains('grade-distribution-link')) {
-        const professorName = event.target.getAttribute('data-professor');
-        openGradePopup(professorName);
-    }
-});
+    enhance();
+    observer.observe(document.body, {childList:true,subtree:true});
+})();

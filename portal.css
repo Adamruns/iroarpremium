@@ -1,0 +1,18 @@
+/* The student portal uses Bootstrap tabs. Keep its tab controls and destinations intact. */
+#page_body:has(.pane-items) { background: #f7f6f9; color: #2d2137; }
+#page_body .nav-tabs:has(+ .tab-content) { gap: 4px; padding: 6px; background: #eae5ef; border: 0; border-radius: 14px; }
+#page_body .nav-tabs .nav-link { border: 0; border-radius: 10px; color: #453451 !important; background: transparent !important; font-weight: 600; }
+#page_body .nav-tabs .nav-link.active { background: #43295c !important; color: white !important; }
+#page_body .pane-items { row-gap: 10px; }
+#page_body .tab-item > a { display: block; height: 100%; border: 1px solid #ddd7e2; background: white; border-radius: 12px; padding: 8px 10px; color: #33253e; text-decoration: none; }
+#page_body .tab-item > a:hover { border-color: #ad90bd; background: #fcfaff; }
+#page_body .tab-item > a > .row { margin: 0; height: 100%; align-items: center; }
+#page_body .tab-item .brand-bg { background: #f2eaf7 !important; color: #59396d; border-radius: 8px; }
+#page_body .tab-item .brand-bg i { color: #59396d !important; }
+#page_body .tab-item .white-bg { background: transparent !important; }
+#page_body .tab-item .icon-text { white-space: normal; font-weight: 600; line-height: 1.35; }
+@media(max-width: 700px) {
+    #page_body .nav-tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+    #page_body .nav-tabs .nav-link { width: 100%; min-height: 44px; }
+    #page_body .tab-item { margin: 0; }
+}

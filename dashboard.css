@@ -1,0 +1,28 @@
+.iroar-dashboard, .iroar-directory-toggle { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.iroar-dashboard { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 clamp(10px,2vw,26px) 32px; box-sizing: border-box; color: #2b2035; }
+.iroar-dashboard *, .iroar-dashboard *::before { box-sizing: border-box; }
+.iroar-dashboard[hidden], .iroar-dashboard [hidden], .heading-txt[hidden] { display: none !important; }
+.iroar-directory-toggle { display: block; margin: 8px 16px 8px auto; padding: 6px; border: 0; background: transparent; color: #57366e; text-decoration: underline; cursor: pointer; }
+.iroar-hero {
+    position: relative; overflow: hidden; isolation: isolate; display: flex; align-items: flex-end; justify-content: space-between;
+    flex-wrap: wrap; gap: 22px; border-radius: 18px; padding: clamp(22px,4vw,46px); background: #32203f; color: #fff;
+}
+.iroar-hero::after { content: ""; position: absolute; z-index: -1; inset: -90% -12% -95% 55%; transform: rotate(27deg);
+    background: repeating-linear-gradient(90deg,transparent 0 31px,#6a4270 32px 34px); opacity: .55; }
+.iroar-hero p { margin: 0 0 9px; font-size: 14px; color: #ffbd91; font-weight: 650; }
+.iroar-hero h1 { margin: 0; color: white !important; font-size: clamp(30px,4vw,52px) !important; font-weight: 700; letter-spacing: -.055em; line-height: 1.05; }
+.iroar-hero label { display: grid; gap: 7px; color: white; font-size: 14px; font-weight: 600; flex: 0 1 280px; }
+.iroar-hero input[type=search] { box-sizing: border-box; width: 100%; height: 44px; padding: 0 14px; background: #fff; color: #2b2035; border: 0; border-radius: 8px; font: inherit; }
+.iroar-card-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; gap: 18px; }
+.iroar-search-status { margin: 14px 0; font-size: 15px; }
+.iroar-service-card { border: 1px solid #ded9e3; background: white; border-radius: 14px; overflow: hidden; }
+.iroar-service-card h2 { margin: 0; padding: 18px 20px 14px; background: #f5f1f7; color: #422b50; font-size: 19px !important; font-weight: 650; letter-spacing: -.02em; }
+.iroar-service-card ul { list-style: none; margin: 0; padding: 0 18px; }
+.iroar-service-card li { margin: 0; padding: 0; list-style: none; border-bottom: 1px solid #eeeaf0; }
+.iroar-service-card li:last-child { border: 0; }
+.iroar-service-card li a { display: block; padding: 13px 2px; color: #362a40 !important; text-decoration: none; font-size: 15px; line-height: 1.4; }
+.iroar-service-card li a:hover { color: #963f0a !important; text-decoration: underline; }
+@media(max-width: 720px) {
+    .iroar-card-grid { grid-template-columns: 1fr; gap: 12px; }
+    .iroar-hero label { flex-basis: 100%; }
+}

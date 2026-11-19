@@ -1,0 +1,12 @@
+{
+  "name": "iroar-showcase",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node scenes.mjs",
+    "video": "node scenes.mjs --capture && python3 render.py"
+  },
+  "devDependencies": {
+    "playwright": "1.60.0"
+  }
+}

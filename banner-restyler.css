@@ -1,0 +1,78 @@
+.iroar-banner {
+    --roar-ink: #291d38;
+    --roar-plum: #41265e;
+    --roar-accent: #a63e06;
+    --roar-line: #dedbe3;
+    --roar-paper: #f6f5f8;
+}
+.iroar-banner body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--roar-ink); }
+.iroar-banner #title-panel {
+    background: #31203f !important; color: white !important;
+    border-bottom: 3px solid #f58037 !important;
+}
+.iroar-banner #title-panel :is(h1,h2,.title) { color: white !important; font-weight: 650; }
+.iroar-banner #breadcrumb-panel { background: #f6f4f8 !important; }
+.iroar-banner #breadcrumb-panel a,
+.iroar-banner #content a:not([class]):not([role]) { color: #693973; }
+.iroar-banner :is(#content,#mainContent,.page-content) :is(input,select,textarea) { accent-color: #784a90; }
+.iroar-banner :focus-visible { outline: 3px solid #a44e13 !important; outline-offset: 2px; }
+.iroar-banner #content :is(.primary-button,.form-button,.btn-primary):not(:disabled) {
+    background: #4a2a66 !important; color: #fff !important; border-radius: 7px; border-color: #4a2a66;
+}
+.iroar-banner #content .ui-tabs-nav { background-color: #f4f1f7; border-bottom-color: #d7cddd; }
+.iroar-banner #content .ui-tabs-nav li.ui-tabs-active a { color: #512e6a; box-shadow: inset 0 -3px #da671e; }
+.iroar-banner :is(#content,#mainContent) table:not([role=presentation]) thead th { background-color: #efeaf3; color: #342442; }
+.iroar-banner .ui-dialog { border-radius: 12px; box-shadow: 0 12px 42px #31203f29; }
+.iroar-banner .ui-dialog-titlebar { background-color: #41265e; color: white; }
+.iroar-banner #landing-paths { background: var(--roar-paper) !important; padding: clamp(16px,4vw,56px) !important; box-sizing: border-box; }
+.iroar-banner #landing-paths #select-msg { height: auto; background: none; border: 0; }
+.iroar-banner #landing-paths #select-msg .title { margin: 0 auto 24px; max-width: 1120px; color: var(--roar-ink); font-size: clamp(24px,3.8vw,42px); line-height: 1.15; letter-spacing: -.035em; }
+.iroar-banner #landingPathMenu {
+    max-width: 1120px; margin: 0 auto; padding: 0; display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); gap: 14px;
+}
+.iroar-banner #landingPathMenu .landing-path {
+    float: none !important; display: block; box-sizing: border-box; width: auto !important; height: auto !important;
+    min-width: 0; margin: 0 !important; padding: 0; border-radius: 14px; border: 1px solid var(--roar-line); background: #fff;
+}
+.iroar-banner #landingPathMenu .landing-path a { display: block; padding: 22px; box-sizing: border-box; min-height: 100%; text-decoration: none; color: var(--roar-plum); }
+.iroar-banner #landingPathMenu .landing-path:hover { border-color: #b59ac4; box-shadow: 0 4px 16px #3d214912; }
+.iroar-banner #landingPathMenu .title { background-color: transparent; color: var(--roar-ink); font-size: 19px; line-height: 1.35; font-weight: 700; }
+.iroar-banner #landingPathMenu .sub-link { font-size: 15px; line-height: 1.5; color: #5e5866; font-weight: 400; }
+@media(max-width: 650px) {
+    .iroar-banner #landingPathMenu .landing-path a { padding: 16px; }
+    .iroar-banner #content .select2-container { max-width: 100%; }
+    .iroar-banner #content .ui-tabs-nav { display: flex; flex-wrap: wrap; }
+    .iroar-banner #content .form-button { min-height: 42px; }
+}
+.iroar-banner #landing-paths #select-msg {
+    max-width: 1120px; margin: 0 auto 16px; box-sizing: border-box; padding: clamp(20px,3vw,34px);
+    background: repeating-linear-gradient(118deg,transparent 0 34px,#ffffff08 35px 37px),#362344;
+    border-radius: 14px; border-left: 5px solid #ed8a49;
+}
+.iroar-banner #landing-paths #select-msg .title { float: none; margin: 0; color: white; }
+.iroar-banner #landingPathMenu { grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); }
+.iroar-banner #landingPathMenu .landing-path a {
+    padding: 20px 18px 20px 74px; background-position: 18px 20px; background-size: 42px 42px;
+    background-repeat: no-repeat; min-height: 124px; height: 100%;
+}
+.iroar-banner #landingPathMenu .title { display: block; text-decoration: none; margin-bottom: 5px; }
+.iroar-banner #landingPathMenu a:hover .title { text-decoration: underline; }
+/* Student Self-Service uses Angular section headers; Registration uses jQuery UI panels. */
+.iroar-banner #content .page-header {
+    background: #f2edf5; color: #382344; border-bottom: 2px solid #d9c8df; padding-inline: clamp(14px,2vw,28px);
+}
+.iroar-banner #content .page-header h1 { color: #382344; font-weight: 700; letter-spacing: -.035em; }
+.iroar-banner #content .section-header { background-color: #f6f3f8; color: #442e51; border-color: #e1d9e6; }
+.iroar-banner #content .section-header :is(h2,h3) { color: #442e51; font-weight: 650; }
+.iroar-banner #content .section-body { border-color: #e1d9e6; }
+.iroar-banner #content :is(.ui-tabs-panel,.results-grid) { scrollbar-color: #baa8c5 #f6f3f8; }
+.iroar-banner #content .select2-choice { border-color: #bfb3c8; border-radius: 6px; }
+#dashboard-app header.MuiAppBar-root { background-color: #352141; border-bottom: 3px solid #ed8a49; }
+#dashboard-app #main-content { background-color: #f6f4f8; }
+#dashboard-app #main-content .MuiPaper-rounded { border-radius: 12px; }
+#dashboard-app #main-content h1 { color: #392744; letter-spacing: -.035em; }
+@media(max-width: 650px) {
+    .iroar-banner #content .page-header { padding-inline: 12px; }
+    .iroar-banner #content .section-header { overflow-wrap: anywhere; }
+    .iroar-banner #landing-paths { overflow-y: auto; }
+}

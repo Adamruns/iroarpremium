@@ -1,46 +1,81 @@
 {
-    "manifest_version": 3,
-    "name": "IRoar Premium",
-    "version": "2.0",
-    "description": "Enhances Clemson iROAR with a modern redesigned UI, Rate My Professors ratings, and grade distribution data.",
-    "permissions": [
-        "storage"
-    ],
-    "host_permissions": [
-        "https://www.ratemyprofessors.com/*",
+  "manifest_version": 3,
+  "name": "IRoar Premium",
+  "version": "2.1.0",
+  "description": "Enhances Clemson iROAR with a modern redesigned UI, Rate My Professors ratings, and grade distribution data.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://www.ratemyprofessors.com/*",
+    "https://*.sis.clemson.edu/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "48": "icons/icon-48.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
         "https://*.sis.clemson.edu/*"
-    ],
-    "background": {
-        "service_worker": "background.js"
+      ],
+      "css": [
+        "banner-restyler.css"
+      ],
+      "js": [
+        "banner-restyler.js"
+      ],
+      "run_at": "document_end"
     },
-    "icons": {
-        "16": "icons/icon-16.png",
-        "48": "icons/icon-48.png",
-        "96": "icons/icon-96.png",
-        "128": "icons/icon-128.png"
+    {
+      "matches": [
+        "https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/classSearch/classSearch*"
+      ],
+      "css": [
+        "registration.css"
+      ],
+      "js": [
+        "schedule.js",
+        "registration.js"
+      ],
+      "run_at": "document_end"
     },
-    "content_scripts": [
-        {
-            "matches": ["https://*.sis.clemson.edu/*"],
-            "css": ["banner-restyler.css"],
-            "js": ["banner-restyler.js"],
-            "run_at": "document_end"
-        },
-        {
-            "matches": ["https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/*"],
-            "css": ["registration.css"],
-            "js": ["registration.js"],
-            "run_at": "document_end"
-        },
-        {
-            "matches": ["https://sadv.sis.clemson.edu/StudentSelfService/ssb/studentCommonDashboard*"],
-            "js": ["dashboard.js"]
-        }
-    ],
-    "web_accessible_resources": [
-        {
-          "resources": ["styles.css", "dashboard.css", "banner-restyler.css", "registration.css", "grade_distributions_final/*.csv"],
-          "matches": ["<all_urls>"]
-        }
-    ]
+    {
+      "matches": [
+        "https://sadv.sis.clemson.edu/StudentSelfService/ssb/studentCommonDashboard*"
+      ],
+      "js": [
+        "dashboard.js"
+      ],
+      "css": [
+        "dashboard.css"
+      ]
+    },
+    {
+      "matches": [
+        "https://iroar.app.clemson.edu/dashboard/*"
+      ],
+      "css": [
+        "portal.css"
+      ]
+    },
+    {
+      "matches": [
+        "https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/plan/*",
+        "https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/classRegistration/*",
+        "https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/classSearch/classSearch*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "styles.css"
+      ]
+    }
+  ]
 }

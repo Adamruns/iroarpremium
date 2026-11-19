@@ -21,7 +21,7 @@
         { key: 'txt_creditHourRange', label: 'Credit Hours', type: 'range' },
     ];
 
-    let synchronizerToken = '';
+    let termLabel = '';
     let currentTerm = '';
     let cartItems = [];
     let currentSearchResults = [];
@@ -30,8 +30,11 @@
     let sortColumn = 'subjectDescription';
     let sortDirection = 'asc';
     let activeFilters = {};
-    let searchFormReset = false;
+    let searchSequence = 0;
+    let searchQueue = Promise.resolve();
 
+    const insightSorts = ['rmpRating', 'rmpDifficulty', 'rmpWTA', 'grades'];
+    const sortOptions = {subjectDescription:'Subject',courseNumber:'Course number',courseTitle:'Title',sequenceNumber:'Section',courseReferenceNumber:'CRN',creditHours:'Credits',rmpRating:'Rating',rmpDifficulty:'Difficulty',rmpWTA:'Would take again',grades:'Average A grade'};
     const rmpDataMap = new Map();
     const gradeDataMap = new Map();
 
@@ -39,85 +42,17 @@
         if (text === null || text === undefined) return '';
         const element = document.createElement('span');
         element.textContent = String(text);
-        return element.innerHTML;
+        return element.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    function extractSessionData() {
-        const metaToken = document.querySelector('meta[name="synchronizerToken"]');
-
-        if (metaToken) {
-            synchronizerToken = metaToken.content;
-        }
-
-        if (!synchronizerToken) {
-            const inputToken = document.querySelector('input[name="synchronizerToken"]');
-
-            if (inputToken) {
-                synchronizerToken = inputToken.value;
-            }
-        }
-
-        if (!synchronizerToken) {
-            const scripts = document.querySelectorAll('script');
-
-            for (const script of scripts) {
-                const text = script.textContent;
-                const tokenMatch = text.match(/synchronizerToken['":\s]+=?\s*['"]([^'"]+)['"]/);
-
-                if (tokenMatch) {
-                    synchronizerToken = tokenMatch[1];
-                    break;
-                }
-            }
-        }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlTerm = urlParams.get('term');
-
-        if (urlTerm) {
-            currentTerm = urlTerm;
-        }
-
-        if (!currentTerm) {
-            const termElement = document.querySelector('[data-term]');
-
-            if (termElement) {
-                currentTerm = termElement.dataset.term;
-            }
-        }
-
-        if (!currentTerm) {
-            const scripts = document.querySelectorAll('script');
-
-            for (const script of scripts) {
-                const text = script.textContent;
-                const termMatch = text.match(/\b(20\d{4})\b/);
-
-                if (termMatch) {
-                    currentTerm = termMatch[1];
-                    break;
-                }
-            }
-        }
-
-        console.log('[IRoar Premium] Session data extracted — token:', synchronizerToken ? 'found' : 'missing', '| term:', currentTerm || 'missing');
-    }
-
-    function hideOriginalUI() {
-        const bodyChildren = document.body.children;
-
-        for (const child of bodyChildren) {
-            child.style.display = 'none';
-        }
-
-        document.body.classList.add('irp-active');
-    }
-
-    function injectCSS() {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = chrome.runtime.getURL('registration.css');
-        document.head.appendChild(link);
+    function extractTerm() {
+        termLabel = document.querySelector('label[for="txt_term"]')?.textContent.replace(/^Term\s*:\s*/i, '').trim() || '';
+        const explicit = document.querySelector('#txt_term')?.value || new URLSearchParams(location.search).get('term');
+        if (/^20\d{4}$/.test(explicit)) return explicit;
+        const match = /^(Spring|Summer(?: I{1,2})?|Fall)\s+(20\d{2})/i.exec(termLabel);
+        if (!match) return '';
+        const suffix = {spring:'01', summer:'05', 'summer i':'05', 'summer ii':'06', fall:'08'};
+        return match[2] + suffix[match[1].toLowerCase()];
     }
 
     function buildFilterGroupHTML(filter) {
@@ -139,9 +74,9 @@
                 <fieldset class="irp-filter-group" data-filter-key="${filter.key}">
                     <label>${filter.label}</label>
                     <div class="irp-range-inputs">
-                        <input type="number" id="irp-${filter.key}-min" placeholder="Min"
+                        <input type="number" aria-label="Minimum credits" id="irp-${filter.key}-min" placeholder="Min"
                                min="0" data-key="${filter.key}" data-range="min">
-                        <input type="number" id="irp-${filter.key}-max" placeholder="Max"
+                        <input type="number" aria-label="Maximum credits" id="irp-${filter.key}-max" placeholder="Max"
                                min="0" data-key="${filter.key}" data-range="max">
                     </div>
                 </fieldset>`;
@@ -164,7 +99,7 @@
         app.innerHTML = `
             <header class="irp-topbar">
                 <div class="irp-topbar-left">
-                    <button type="button" class="irp-menu-toggle" aria-label="Toggle filters">
+                    <button type="button" class="irp-menu-toggle" aria-expanded="false" aria-controls="irp-filters" aria-label="Toggle filters">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                             <line x1="3" y1="6" x2="21" y2="6"/>
                             <line x1="3" y1="12" x2="21" y2="12"/>
@@ -177,23 +112,16 @@
                     <span class="irp-term-display"></span>
                 </div>
                 <div class="irp-topbar-right">
-                    <span class="irp-keepalive-dot" title="Session active"></span>
-                    <button type="button" class="irp-cart-toggle" aria-label="Toggle cart">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                             stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="9" cy="21" r="1"/>
-                            <circle cx="20" cy="21" r="1"/>
-                            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
-                        </svg>
+                    <button type="button" class="irp-cart-toggle" aria-expanded="false" aria-controls="irp-planner">My schedule
                         <span class="irp-cart-badge irp-hidden">0</span>
                     </button>
                 </div>
             </header>
             <div class="irp-body">
-                <aside class="irp-sidebar">
+                <aside class="irp-sidebar" id="irp-filters">
                     <div class="irp-sidebar-header">
                         <h2>Filters</h2>
-                        <button type="button" class="irp-clear-all">Clear All</button>
+                        <button type="button" class="irp-clear-all">Clear all</button>
                     </div>
                     <div class="irp-sidebar-filters">
                         ${filterGroupsHTML}
@@ -203,69 +131,32 @@
                     </div>
                 </aside>
                 <main class="irp-main">
+                    <header class="irp-intro"><div><p>Course planning</p><h1>Browse classes</h1></div>
+                        <button type="button" class="irp-native">Use Banner view</button></header>
                     <div class="irp-active-filters"></div>
+                    <div class="irp-sort-controls" hidden><label>Sort sections <select class="irp-sort-by">
+                        ${Object.entries(sortOptions).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('')}
+                        </select></label><button class="irp-sort-order" type="button">Ascending</button></div>
                     <div class="irp-results-container">
-                        <div class="irp-empty-state">Search for classes using the filters on the left</div>
+                        <div class="irp-empty-state"><strong>Find a section</strong><span>Choose filters or search to see all classes for this term.</span></div>
                     </div>
                     <nav class="irp-pagination"></nav>
                 </main>
             </div>
-            <aside class="irp-drawer irp-drawer-closed">
-                <div class="irp-drawer-header">
-                    <div>
-                        <h2>My Courses (<span class="irp-cart-count">0</span>)</h2>
-                        <span class="irp-cart-credits">0 Credit Hours</span>
-                    </div>
-                    <button type="button" class="irp-drawer-close" aria-label="Close cart">&times;</button>
+            <aside class="irp-drawer irp-drawer-closed" id="irp-planner" aria-labelledby="irp-schedule-title" role="dialog" aria-modal="true" inert>
+                <div class="irp-drawer-header"><div><p>Schedule preview</p><h2 id="irp-schedule-title">My week</h2>
+                    <span class="irp-cart-count">0</span> sections · <span class="irp-cart-credits">0 credits</span></div>
+                    <button type="button" class="irp-drawer-close" aria-label="Close schedule">×</button></div>
+                <div class="irp-planner-body">
+                    <div class="irp-drawer-conflicts irp-hidden" role="status"></div>
+                    <div class="irp-drawer-schedule"></div><div class="irp-drawer-courses"></div>
                 </div>
-                <div class="irp-drawer-crn">
-                    <input type="text" class="irp-crn-input" placeholder="Add by CRN...">
-                    <button type="button" class="irp-crn-add">Add</button>
-                </div>
-                <div class="irp-drawer-courses"></div>
-                <div class="irp-drawer-schedule"></div>
-                <div class="irp-drawer-conflicts irp-hidden"></div>
-                <div class="irp-drawer-footer">
-                    <button type="button" class="irp-submit-registration">Submit Registration</button>
-                </div>
+                <div class="irp-drawer-footer">This preview lasts until you leave this page. Use Banner to register.</div>
             </aside>
             <div class="irp-drawer-overlay irp-hidden"></div>
         `;
 
         document.body.appendChild(app);
-    }
-
-    function startKeepalive() {
-        setInterval(function () {
-            fetch(BASE_PATH + '/keepAlive/data').then(function (response) {
-                if (!response.ok) {
-                    console.warn('[IRoar Premium] Keepalive failed with status:', response.status);
-                    const dot = document.querySelector('.irp-keepalive-dot');
-                    if (dot) dot.classList.add('irp-keepalive-dead');
-                    showSessionExpired();
-                }
-            }).catch(function (error) {
-                console.warn('[IRoar Premium] Keepalive request error:', error);
-                const dot = document.querySelector('.irp-keepalive-dot');
-                if (dot) dot.classList.add('irp-keepalive-dead');
-                showSessionExpired();
-            });
-        }, 5 * 60 * 1000);
-    }
-
-    function formatTermCode(termCode) {
-        const SEMESTER_MAP = {
-            '01': 'Spring',
-            '05': 'Summer I',
-            '06': 'Summer II',
-            '08': 'Fall'
-        };
-
-        const year = termCode.substring(0, 4);
-        const semesterCode = termCode.substring(4, 6);
-        const semesterName = SEMESTER_MAP[semesterCode] || 'Unknown';
-
-        return semesterName + ' ' + year;
     }
 
     function debounce(callback, delay) {
@@ -399,6 +290,8 @@
         if (meetingTime.wednesday) days += 'W';
         if (meetingTime.thursday) days += 'R';
         if (meetingTime.friday) days += 'F';
+        if (meetingTime.saturday) days += 'Sa';
+        if (meetingTime.sunday) days += 'Su';
         return days || 'TBA';
     }
 
@@ -454,7 +347,7 @@
 
     function renderAddButton(section) {
         const inCart = cartItems.some(function (item) { return item.courseReferenceNumber === section.courseReferenceNumber; });
-        if (inCart) return '<button class="irp-btn-added" disabled>Added</button>';
+        if (inCart) return '<button class="irp-btn-added" data-crn="' + escapeHTML(section.courseReferenceNumber) + '" disabled>Added</button>';
         return '<button class="irp-btn-add" data-crn="' + escapeHTML(section.courseReferenceNumber) + '">Add</button>';
     }
 
@@ -499,70 +392,27 @@
             return;
         }
 
-        let html = '<table class="irp-table">'
-            + '<thead><tr>'
-            + '<th style="width:32px"></th>'
-            + '<th data-sort-key="courseReferenceNumber" style="width:70px">CRN</th>'
-            + '<th data-sort-key="subjectDescription" style="width:60px">Subj</th>'
-            + '<th data-sort-key="courseNumber" style="width:60px">Crse</th>'
-            + '<th data-sort-key="sequenceNumber" style="width:50px">Sec</th>'
-            + '<th data-sort-key="courseTitle">Title</th>'
-            + '<th data-sort-key="creditHours" style="width:45px">Hrs</th>'
-            + '<th style="width:140px">Professor</th>'
-            + '<th data-sort-key="rmpRating" style="width:55px">Rating</th>'
-            + '<th data-sort-key="rmpDifficulty" style="width:50px">Diff</th>'
-            + '<th data-sort-key="rmpWTA" style="width:55px">WTA%</th>'
-            + '<th data-sort-key="grades" style="width:80px">Grades</th>'
-            + '<th style="width:100px">Time</th>'
-            + '<th style="width:60px">Days</th>'
-            + '<th style="width:100px">Location</th>'
-            + '<th style="width:70px">Seats</th>'
-            + '<th style="width:70px"></th>'
-            + '</tr></thead><tbody>';
-
-        for (let i = 0; i < results.length; i++) {
-            const section = results[i];
-            const meeting = section.meetingsFaculty && section.meetingsFaculty[0] && section.meetingsFaculty[0].meetingTime;
-
-            let timeDisplay = '';
-            let daysDisplay = 'TBA';
-            let locationDisplay = 'TBA';
-
-            if (meeting) {
-                const begin = formatTime(meeting.beginTime);
-                const end = formatTime(meeting.endTime);
-                timeDisplay = begin && end ? begin + '-' + end : '';
-                daysDisplay = formatDays(meeting);
-                const building = meeting.building || '';
-                const room = meeting.room || '';
-                locationDisplay = (building + ' ' + room).trim() || 'TBA';
-            }
-
-            const credits = section.creditHours || section.creditHourLow || '—';
-
-            html += '<tr data-crn="' + escapeHTML(section.courseReferenceNumber) + '">'
-                + '<td>' + renderStatusDot(section) + '</td>'
-                + '<td>' + escapeHTML(section.courseReferenceNumber) + '</td>'
-                + '<td>' + escapeHTML(section.subject || '') + '</td>'
-                + '<td>' + escapeHTML(section.courseNumber || '') + '</td>'
-                + '<td>' + escapeHTML(section.sequenceNumber || '') + '</td>'
-                + '<td>' + escapeHTML(section.courseTitle || '') + '</td>'
-                + '<td>' + escapeHTML(credits) + '</td>'
-                + '<td>' + renderProfessor(section) + '</td>'
-                + '<td><span class="irp-cell-loading"></span></td>'
-                + '<td><span class="irp-cell-loading"></span></td>'
-                + '<td><span class="irp-cell-loading"></span></td>'
-                + '<td><span class="irp-cell-loading"></span></td>'
-                + '<td>' + escapeHTML(timeDisplay) + '</td>'
-                + '<td>' + escapeHTML(daysDisplay) + '</td>'
-                + '<td>' + escapeHTML(locationDisplay) + '</td>'
-                + '<td>' + renderSeats(section) + '</td>'
-                + '<td>' + renderAddButton(section) + '</td>'
-                + '</tr>';
+        const headers = [['Section','courseTitle'],['Meetings',''],['Instructor',''],['Rating','rmpRating'],['Difficulty','rmpDifficulty'],['Take again','rmpWTA'],['Grades','grades'],['Seats',''],['','']];
+        let html = '<table class="irp-table"><thead><tr>' + headers.map(([label,key]) =>
+            key ? '<th data-sort-key="'+key+'"><button type="button">'+label+'</button></th>' : '<th>'+label+'</th>'
+        ).join('') + '</tr></thead><tbody>';
+        for (const section of results) {
+            const e = escapeHTML;
+            const title = e(section.courseTitle);
+            const code = e([section.subject,section.courseNumber].join(' '));
+            const times = [...new Set((section.meetingsFaculty || []).map(({meetingTime:m}) => m && (m.beginTime
+                ? formatDays(m)+' '+formatTime(m.beginTime)+'–'+formatTime(m.endTime) : 'Time TBA')).filter(Boolean))];
+            const location = (section.meetingsFaculty || [])[0]?.meetingTime;
+            const venue = [location?.building, location?.room].filter(Boolean).join(' ');
+            const metric = (label,field) => '<td data-label="'+label+'"><span data-metric="'+field+'">'+(section.faculty?.length ? '…' : '—')+'</span></td>';
+            html += '<tr data-crn="'+e(section.courseReferenceNumber)+'"><td class="irp-course"><small>'+code+' · '+e(section.sequenceNumber)+'</small>'
+                +'<button class="irp-title" type="button" aria-expanded="false">'+title+'</button><small>CRN '+e(section.courseReferenceNumber)+' · '+e(section.creditHours ?? section.creditHourLow ?? '—')+' credits</small></td>'
+                +'<td data-label="Meetings">'+e(times.join(' / ') || 'Time TBA')+'<small>'+e(venue)+'</small></td>'
+                +'<td data-label="Instructor">'+renderProfessor(section)+'</td>'
+                +metric('Rating','rating')+metric('Difficulty','difficulty')+metric('Take again','again')+metric('Grade history','grades')
+                +'<td data-label="Seats">'+renderStatusDot(section)+' '+renderSeats(section)+'</td><td>'+renderAddButton(section)+'</td></tr>';
         }
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
+        container.innerHTML = html+'</tbody></table>';
     }
 
     function renderPagination() {
@@ -598,16 +448,16 @@
             const rowNormalized = normalizeProfessorName(profElement.dataset.name).toLowerCase();
             if (rowNormalized !== normalizedName) continue;
 
-            const cells = rows[i].querySelectorAll('td');
+            const cell = key => rows[i].querySelector('[data-metric="' + key + '"]');
 
-            if (teacher.error || teacher.wouldTakeAgainPercent === -1) {
-                cells[8].innerHTML = '<span class="irp-text-muted">N/A</span>';
-                cells[9].innerHTML = '<span class="irp-text-muted">N/A</span>';
-                cells[10].innerHTML = '<span class="irp-text-muted">N/A</span>';
+            if (teacher.error || !teacher.numRatings) {
+                cell('rating').innerHTML = '<span class="irp-text-muted">N/A</span>';
+                cell('difficulty').innerHTML = '<span class="irp-text-muted">N/A</span>';
+                cell('again').innerHTML = '<span class="irp-text-muted">N/A</span>';
             } else {
-                cells[8].innerHTML = '<span class="irp-' + getRatingColor(teacher.avgRating) + '">' + teacher.avgRating + '</span>';
-                cells[9].innerHTML = '<span class="irp-' + getDifficultyColor(teacher.avgDifficulty) + '">' + teacher.avgDifficulty + '</span>';
-                cells[10].innerHTML = '<span class="irp-' + getWTAColor(teacher.wouldTakeAgainPercent) + '">' + Math.round(teacher.wouldTakeAgainPercent) + '%</span>';
+                cell('rating').innerHTML = '<span class="irp-' + getRatingColor(teacher.avgRating) + '">' + escapeHTML(teacher.avgRating) + '</span>';
+                cell('difficulty').innerHTML = '<span class="irp-' + getDifficultyColor(teacher.avgDifficulty) + '">' + escapeHTML(teacher.avgDifficulty) + '</span>';
+                cell('again').innerHTML = '<span class="irp-' + getWTAColor(teacher.wouldTakeAgainPercent) + '">' + (teacher.wouldTakeAgainPercent >= 0 ? Math.round(teacher.wouldTakeAgainPercent) + '%' : 'N/A') + '</span>';
             }
         }
     }
@@ -634,6 +484,8 @@
             port.onMessage.addListener(function (teacher) {
                 rmpDataMap.set(normalized, teacher);
                 updateRMPCells(normalized);
+                refreshOpenMetrics(normalized);
+                port.disconnect();
             });
         });
     }
@@ -649,7 +501,7 @@
             const rowNormalized = normalizeProfessorName(profElement.dataset.name).toLowerCase();
             if (rowNormalized !== normalizedName) continue;
 
-            const cell = rows[i].querySelectorAll('td')[11];
+            const cell = rows[i].querySelector('[data-metric="grades"]');
             if (!gradeData || gradeData.length === 0) {
                 cell.innerHTML = '<span class="irp-text-muted">N/A</span>';
                 continue;
@@ -706,29 +558,29 @@
                 if (response.type === 'gradeDistribution') {
                     gradeDataMap.set(normalized, response.data);
                     updateGradeCells(normalized);
+                    refreshOpenMetrics(normalized);
+                    port.disconnect();
                 }
             });
         });
     }
 
     function updateSortIndicators() {
+        document.querySelector('.irp-sort-controls').hidden = currentSearchResults.length === 0;
+        document.querySelector('.irp-sort-by').value = sortColumn;
+        document.querySelector('.irp-sort-order').textContent = sortDirection === 'asc' ? 'Ascending' : 'Descending';
         const headers = document.querySelectorAll('.irp-table thead th[data-sort-key]');
         for (let i = 0; i < headers.length; i++) {
+            headers[i].removeAttribute('aria-sort');
             headers[i].classList.remove('irp-sort-asc', 'irp-sort-desc');
             if (headers[i].dataset.sortKey === sortColumn) {
+                headers[i].setAttribute('aria-sort', sortDirection === 'asc' ? 'ascending' : 'descending');
                 headers[i].classList.add(sortDirection === 'asc' ? 'irp-sort-asc' : 'irp-sort-desc');
             }
         }
     }
 
     function sortResultsClientSide(key) {
-        if (sortColumn === key) {
-            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            sortColumn = key;
-            sortDirection = 'desc';
-        }
-
         currentSearchResults.sort(function (a, b) {
             const nameA = normalizeProfessorName(a.faculty && a.faculty[0] ? a.faculty[0].displayName : '').toLowerCase();
             const nameB = normalizeProfessorName(b.faculty && b.faculty[0] ? b.faculty[0].displayName : '').toLowerCase();
@@ -761,26 +613,11 @@
         loadGradeDataForResults(currentSearchResults);
     }
 
-    function handleSortClick(event) {
-        const header = event.target.closest('th[data-sort-key]');
-        if (!header) return;
-
-        const key = header.dataset.sortKey;
-        const CLIENT_SORT_KEYS = ['rmpRating', 'rmpDifficulty', 'rmpWTA', 'grades'];
-
-        if (CLIENT_SORT_KEYS.indexOf(key) !== -1) {
-            sortResultsClientSide(key);
-            return;
-        }
-
-        if (sortColumn === key) {
-            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            sortColumn = key;
-            sortDirection = 'asc';
-        }
-
-        executeSearch(0);
+    function chooseSort(key) {
+        sortDirection = sortColumn === key ? (sortDirection === 'asc' ? 'desc' : 'asc') : (insightSorts.includes(key) && key !== 'rmpDifficulty' ? 'desc' : 'asc');
+        sortColumn = key;
+        if (insightSorts.includes(key)) sortResultsClientSide(key);
+        else executeSearch(0);
     }
 
     function fetchDetailHTML(endpoint, term, crn) {
@@ -918,11 +755,11 @@
         const teacher = rmpDataMap.get(normalized);
 
         if (!teacher) {
-            container.innerHTML = '<p class="irp-text-muted">Loading RMP data...</p>';
+            container.innerHTML = '<p class="irp-text-muted">Loading ratings…</p>';
             return;
         }
 
-        if (teacher.error || teacher.wouldTakeAgainPercent === -1) {
+        if (teacher.error || !teacher.numRatings) {
             container.innerHTML = '<div class="irp-rmp-card"><p class="irp-text-muted">No RMP ratings available</p></div>';
             return;
         }
@@ -930,11 +767,11 @@
         container.innerHTML = '<div class="irp-rmp-card">'
             + '<h4>Rate My Professors</h4>'
             + '<div class="irp-rmp-stats">'
-            + '<div class="irp-rmp-stat"><span class="irp-rmp-value irp-' + getRatingColor(teacher.avgRating) + '">' + teacher.avgRating + '</span><span class="irp-rmp-label">Rating</span></div>'
-            + '<div class="irp-rmp-stat"><span class="irp-rmp-value irp-' + getDifficultyColor(teacher.avgDifficulty) + '">' + teacher.avgDifficulty + '</span><span class="irp-rmp-label">Difficulty</span></div>'
-            + '<div class="irp-rmp-stat"><span class="irp-rmp-value irp-' + getWTAColor(teacher.wouldTakeAgainPercent) + '">' + Math.round(teacher.wouldTakeAgainPercent) + '%</span><span class="irp-rmp-label">Would Take Again</span></div>'
+            + '<div class="irp-rmp-stat"><span class="irp-rmp-value irp-' + getRatingColor(teacher.avgRating) + '">' + escapeHTML(teacher.avgRating) + '</span><span class="irp-rmp-label">Rating</span></div>'
+            + '<div class="irp-rmp-stat"><span class="irp-rmp-value irp-' + getDifficultyColor(teacher.avgDifficulty) + '">' + escapeHTML(teacher.avgDifficulty) + '</span><span class="irp-rmp-label">Difficulty</span></div>'
+            + '<div class="irp-rmp-stat"><span class="irp-rmp-value irp-' + getWTAColor(teacher.wouldTakeAgainPercent) + '">' + (teacher.wouldTakeAgainPercent >= 0 ? Math.round(teacher.wouldTakeAgainPercent) + '%' : 'N/A') + '</span><span class="irp-rmp-label">Would Take Again</span></div>'
             + '</div>'
-            + '<a href="https://www.ratemyprofessors.com/professor?tid=' + teacher.legacyId + '" target="_blank" rel="noopener noreferrer" class="irp-rmp-link">View on RMP (' + teacher.numRatings + ' ratings)</a>'
+            + '<a href="https://www.ratemyprofessors.com/professor?tid=' + escapeHTML(teacher.legacyId) + '" target="_blank" rel="noopener noreferrer" class="irp-rmp-link">View on RMP (' + escapeHTML(teacher.numRatings) + ' ratings)</a>'
             + '</div>';
     }
 
@@ -967,9 +804,21 @@
         if (details.linkedSections) reqsHTML += '<div class="irp-detail-section"><h4>Linked Sections</h4><p style="white-space:pre-line">' + escapeHTML(details.linkedSections) + '</p></div>';
         panel.querySelector('.irp-detail-reqs-content').innerHTML = reqsHTML || '<p class="irp-text-muted">No requirements</p>';
 
-        const rmpContent = panel.querySelector('.irp-detail-rmp-content');
-        renderDetailRMPCard(section, rmpContent);
-        renderDetailGradeChart(section, rmpContent);
+        const metrics = panel.querySelector('.irp-detail-rmp-content');
+        renderDetailRMPCard(section, metrics);
+        renderDetailGradeChart(section, metrics);
+    }
+
+    function refreshOpenMetrics(name) {
+        for (const row of document.querySelectorAll('.irp-row-expanded')) {
+            const section = currentSearchResults.find(s => s.courseReferenceNumber === row.dataset.crn);
+            if (normalizeProfessorName(section?.faculty?.[0]?.displayName).toLowerCase() !== name) continue;
+            const metrics = row.nextElementSibling?.querySelector('.irp-detail-rmp-content');
+            if (metrics) {
+                renderDetailRMPCard(section, metrics);
+                renderDetailGradeChart(section, metrics);
+            }
+        }
     }
 
     function loadDetailData(section, detailRow) {
@@ -1002,7 +851,7 @@
     }
 
     function handleRowClick(event) {
-        if (event.target.closest('.irp-btn-add, .irp-btn-added')) return;
+        if (event.target.closest('.irp-btn-add, .irp-btn-added, .irp-detail-row')) return;
 
         const row = event.target.closest('tr[data-crn]');
         if (!row) return;
@@ -1011,10 +860,12 @@
         if (existingDetail && existingDetail.classList.contains('irp-detail-row')) {
             existingDetail.remove();
             row.classList.remove('irp-row-expanded');
+            row.querySelector('.irp-title').setAttribute('aria-expanded','false');
             return;
         }
 
         row.classList.add('irp-row-expanded');
+        row.querySelector('.irp-title').setAttribute('aria-expanded','true');
 
         const crn = row.dataset.crn;
         const section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
@@ -1023,7 +874,7 @@
         const detailRow = document.createElement('tr');
         detailRow.className = 'irp-detail-row';
         const detailCell = document.createElement('td');
-        detailCell.colSpan = 17;
+        detailCell.colSpan = 9;
 
         detailCell.innerHTML = '<div class="irp-detail-panel">'
             + '<div class="irp-detail-col"><h3>Course Info</h3><div class="irp-detail-info-content"><div class="irp-skeleton-block"></div></div></div>'
@@ -1042,7 +893,7 @@
         params.set('txt_term', currentTerm);
         params.set('pageOffset', String(page * PAGE_SIZE));
         params.set('pageMaxSize', String(PAGE_SIZE));
-        params.set('sortColumn', sortColumn);
+        params.set('sortColumn', insightSorts.includes(sortColumn) ? 'subjectDescription' : sortColumn);
         params.set('sortDirection', sortDirection);
 
         const filterKeys = Object.keys(activeFilters);
@@ -1061,70 +912,49 @@
         return params;
     }
 
-    function resetSearchForm() {
-        return fetch(BASE_PATH + '/classSearch/resetDataForm', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        }).catch(function () {
-            // Non-critical — search may still work without reset
+    async function resetBannerSearch() {
+        const result = await fetch(BASE_PATH+'/classSearch/resetDataForm', {
+            method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: ''
         });
+        if (!result.ok || result.redirected) throw new Error('Search reset unavailable');
     }
 
-    function executeSearch(page) {
-        if (page === undefined) page = 0;
+    async function executeSearch(page = 0) {
+        const sequence = ++searchSequence;
         currentPage = page;
-
-        const params = buildSearchParams(page);
+        if (document.querySelector('.irp-sidebar-open')) toggleSidebar();
+        document.querySelector('.irp-sort-controls').hidden = true;
         showLoadingState();
-
-        const searchUrl = BASE_PATH + '/searchResults/searchResults?' + params.toString();
-
-        // First attempt the search directly
-        fetch(searchUrl)
-            .then(function (response) { return response.json(); })
-            .then(function (data) {
-                console.log('[IRoar Premium] Search response:', data);
-
-                // Banner may return results at data.data or at the top level
-                const results = data.data || [];
-                const count = data.totalCount || data.sectionsFetchedCount || results.length || 0;
-
-                if (results.length === 0 && !searchFormReset) {
-                    // If no results on first try, reset search form and retry
-                    console.log('[IRoar Premium] No results — resetting search form and retrying...');
-                    searchFormReset = true;
-                    resetSearchForm().then(function () {
-                        return fetch(searchUrl);
-                    }).then(function (response) {
-                        return response.json();
-                    }).then(function (retryData) {
-                        console.log('[IRoar Premium] Retry response:', retryData);
-                        totalResults = retryData.totalCount || retryData.sectionsFetchedCount || 0;
-                        currentSearchResults = retryData.data || [];
-                        renderResultsTable(currentSearchResults);
-                        updateSortIndicators();
-                        renderPagination();
-                        loadRMPDataForResults(currentSearchResults);
-                        loadGradeDataForResults(currentSearchResults);
-                    }).catch(function (error) {
-                        showErrorState('Search failed. Please try again.');
-                        console.error('[IRoar Premium] Retry search error:', error);
-                    });
-                    return;
-                }
-
-                totalResults = count;
-                currentSearchResults = results;
+        document.querySelector('.irp-pagination').replaceChildren();
+        const params = buildSearchParams(page);
+        // Banner caches each search in the server session. Keep its reset and next read in order.
+        const request = searchQueue.then(async () => {
+            if (sequence !== searchSequence) return null;
+            if (page === 0) await resetBannerSearch();
+            if (sequence !== searchSequence) return null;
+            const response = await fetch(BASE_PATH+'/searchResults/searchResults?'+params);
+            if (!response.ok) throw new Error('Search unavailable');
+            return response.json();
+        });
+        searchQueue = request.catch(() => {});
+        try {
+            const data = await request;
+            if (sequence !== searchSequence) return;
+            if (data?.success === true && data.data === null && data.totalCount === 0) data.data = [];
+            if (!data || data.success === false || !Array.isArray(data.data)) throw new Error('Search unavailable');
+            totalResults = data.totalCount ?? data.sectionsFetchedCount ?? data.data.length;
+            currentSearchResults = data.data;
+            if (insightSorts.includes(sortColumn)) sortResultsClientSide(sortColumn);
+            else {
                 renderResultsTable(currentSearchResults);
                 updateSortIndicators();
-                renderPagination();
                 loadRMPDataForResults(currentSearchResults);
                 loadGradeDataForResults(currentSearchResults);
-            })
-            .catch(function (error) {
-                showErrorState('Search failed. Please try again.');
-                console.error('[IRoar Premium] Search error:', error);
-            });
+            }
+            renderPagination();
+        } catch {
+            if (sequence === searchSequence) showErrorState('Banner could not load these sections. Retry or use Banner view.');
+        }
     }
 
     function closeAllDropdowns() {
@@ -1147,7 +977,10 @@
         for (const item of results) {
             const listItem = document.createElement('li');
             listItem.className = 'irp-autocomplete-item';
-            listItem.textContent = item.description;
+            const choice = document.createElement('button');
+            choice.type = 'button';
+            choice.textContent = item.description;
+            listItem.append(choice);
             listItem.dataset.code = item.code;
             listItem.dataset.description = item.description;
             listItem.dataset.filterKey = filterKey;
@@ -1155,11 +988,6 @@
         }
 
         dropdown.classList.remove('irp-hidden');
-    }
-
-    function timeToMinutes(timeString) {
-        if (!timeString || timeString.length < 4) return 0;
-        return parseInt(timeString.substring(0, 2), 10) * 60 + parseInt(timeString.substring(2, 4), 10);
     }
 
     function updateCartBadge() {
@@ -1196,337 +1024,68 @@
         updateCartBadge();
     }
 
-    function openDrawer() {
+    function toggleCartDrawer(open) {
         const drawer = document.querySelector('.irp-drawer');
-        const overlay = document.querySelector('.irp-drawer-overlay');
-        if (!drawer || !overlay) return;
-
-        drawer.classList.remove('irp-drawer-closed');
-        overlay.classList.remove('irp-hidden');
+        if (typeof open !== 'boolean') open = drawer.inert;
+        drawer.inert = !open;
+        drawer.classList.toggle('irp-drawer-closed', !open);
+        document.querySelector('.irp-drawer-overlay').classList.toggle('irp-hidden', !open);
+        document.querySelector('.irp-topbar').inert = open;
+        document.querySelector('.irp-body').inert = open;
+        const toggle = document.querySelector('.irp-cart-toggle');
+        toggle.setAttribute('aria-expanded', String(open));
+        (open ? drawer.querySelector('.irp-drawer-close') : toggle).focus();
     }
 
-    function renderMiniSchedule() {
-        const container = document.querySelector('.irp-drawer-schedule');
-        if (!container) return;
-
-        if (cartItems.length === 0) {
-            container.innerHTML = '';
-            return;
-        }
-
-        const DAYS = ['M', 'T', 'W', 'R', 'F'];
-        const DAY_MAP = { M: 'monday', T: 'tuesday', W: 'wednesday', R: 'thursday', F: 'friday' };
-        const START_HOUR = 7;
-        const END_HOUR = 22;
-        const HOUR_HEIGHT = 18;
-        const SCHEDULE_COLORS = ['#522D80', '#F56600', '#2196f3', '#4caf50', '#ff9800', '#e91e63'];
-
-        let html = '<div class="irp-schedule">';
-        html += '<div class="irp-schedule-header">';
-
-        for (let d = 0; d < DAYS.length; d++) {
-            html += '<div class="irp-schedule-day-label">' + DAYS[d] + '</div>';
-        }
-
-        html += '</div>';
-        html += '<div class="irp-schedule-body">';
-
-        html += '<div class="irp-schedule-times">';
-
-        for (let h = START_HOUR; h <= END_HOUR; h++) {
-            const label = h > 12 ? (h - 12) + 'p' : (h === 12 ? '12p' : h + 'a');
-            html += '<div class="irp-schedule-time" style="height:' + HOUR_HEIGHT + 'px">' + label + '</div>';
-        }
-
-        html += '</div>';
-
-        for (let dayIndex = 0; dayIndex < DAYS.length; dayIndex++) {
-            html += '<div class="irp-schedule-column" style="height:' + ((END_HOUR - START_HOUR + 1) * HOUR_HEIGHT) + 'px">';
-
-            for (let c = 0; c < cartItems.length; c++) {
-                const meeting = cartItems[c].meetingsFaculty && cartItems[c].meetingsFaculty[0] ? cartItems[c].meetingsFaculty[0].meetingTime : null;
-                if (!meeting || !meeting[DAY_MAP[DAYS[dayIndex]]]) continue;
-
-                const startMinutes = timeToMinutes(meeting.beginTime) - (START_HOUR * 60);
-                const endMinutes = timeToMinutes(meeting.endTime) - (START_HOUR * 60);
-                const top = (startMinutes / 60) * HOUR_HEIGHT;
-                const height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
-                const color = SCHEDULE_COLORS[c % SCHEDULE_COLORS.length];
-
-                html += '<div class="irp-schedule-block" style="top:' + top + 'px;height:' + Math.max(height, 10) + 'px;background:' + color + '"'
-                    + ' title="' + escapeHTML(cartItems[c].subject) + ' ' + escapeHTML(cartItems[c].courseNumber) + '">'
-                    + escapeHTML(cartItems[c].subject.substring(0, 4))
-                    + '</div>';
-            }
-
-            html += '</div>';
-        }
-
-        html += '</div></div>';
-        container.innerHTML = html;
-    }
-
-    function checkConflicts() {
-        const conflicts = [];
-
-        for (let i = 0; i < cartItems.length; i++) {
-            for (let j = i + 1; j < cartItems.length; j++) {
-                const meetingA = cartItems[i].meetingsFaculty && cartItems[i].meetingsFaculty[0] ? cartItems[i].meetingsFaculty[0].meetingTime : null;
-                const meetingB = cartItems[j].meetingsFaculty && cartItems[j].meetingsFaculty[0] ? cartItems[j].meetingsFaculty[0].meetingTime : null;
-                if (!meetingA || !meetingB) continue;
-
-                const sharedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].filter(function (day) {
-                    return meetingA[day] && meetingB[day];
-                });
-                if (sharedDays.length === 0) continue;
-
-                const startA = timeToMinutes(meetingA.beginTime);
-                const endA = timeToMinutes(meetingA.endTime);
-                const startB = timeToMinutes(meetingB.beginTime);
-                const endB = timeToMinutes(meetingB.endTime);
-
-                if (startA < endB && startB < endA) {
-                    conflicts.push(escapeHTML(cartItems[i].subject) + ' ' + escapeHTML(cartItems[i].courseNumber) + ' & ' + escapeHTML(cartItems[j].subject) + ' ' + escapeHTML(cartItems[j].courseNumber));
-                }
-            }
-        }
-
-        const conflictContainer = document.querySelector('.irp-drawer-conflicts');
-        if (!conflictContainer) return;
-
-        if (conflicts.length > 0) {
-            conflictContainer.classList.remove('irp-hidden');
-            conflictContainer.innerHTML = conflicts.map(function (c) {
-                return '<div class="irp-conflict-warning">⚠ Time conflict: ' + c + '</div>';
-            }).join('');
-        } else {
-            conflictContainer.classList.add('irp-hidden');
-            conflictContainer.innerHTML = '';
-        }
-    }
-
+    const scheduleColors = ['#613783','#a54516','#1a6370','#58662e','#86516b','#494982'];
     function renderCart() {
-        const coursesContainer = document.querySelector('.irp-drawer-courses');
-        if (!coursesContainer) return;
-
-        let totalCredits = 0;
-
-        for (let i = 0; i < cartItems.length; i++) {
-            totalCredits += cartItems[i].creditHours || cartItems[i].creditHourLow || 0;
+        const {events, conflicts, unscheduled} = iroarSchedule.build(cartItems);
+        const conflictBox = document.querySelector('.irp-drawer-conflicts');
+        conflictBox.classList.toggle('irp-hidden', !conflicts.length);
+        const name = item => escapeHTML([item.subject,item.courseNumber].join(' '));
+        conflictBox.innerHTML = conflicts.map(([a,b]) => '<div class="irp-conflict-warning">Time conflict · '+name(cartItems[a])+' and '+name(cartItems[b])+'</div>').join('');
+        let schedule = '';
+        if (events.length) {
+            const start = Math.floor(Math.min(...events.map(e=>e.start))/60);
+            const end = Math.ceil(Math.max(...events.map(e=>e.end))/60);
+            const days = iroarSchedule.days.filter((day,i) => i<5 || events.some(e=>e.day===day));
+            const hourHeight = 38;
+            const stamp = minute => formatTime(String(Math.floor(minute/60)).padStart(2,'0')+String(minute%60).padStart(2,'0'));
+            schedule = '<div class="irp-week" style="--days:'+days.length+';--height:'+((end-start)*hourHeight)+'px"><div></div>'
+                + days.map(day=>'<b>'+day.slice(0,3)+'</b>').join('')+'<div class="irp-hour-axis">';
+            for (let hour=start;hour<end;hour++) schedule+='<small>'+stamp(hour*60).replace(':00','')+'</small>';
+            schedule += '</div>'+days.map(day=>'<div class="irp-day">'+events.filter(e=>e.day===day).map(event=>{
+                const label = escapeHTML(event.label+' · '+day+' '+stamp(event.start)+'–'+stamp(event.end));
+                return '<span class="irp-block" title="'+label+'" aria-label="'+label+'" style="background:'+scheduleColors[event.index%scheduleColors.length]
+                    +';top:'+((event.start/60-start)*hourHeight)+'px;height:'+((event.end-event.start)/60*hourHeight)+'px;left:'+(100*event.lane/event.lanes)+'%;width:'+(100/event.lanes)+'%">'
+                    +escapeHTML(event.label)+'</span>';
+            }).join('')+'</div>').join('')+'</div>';
         }
-
-        const countEl = document.querySelector('.irp-cart-count');
-        if (countEl) countEl.textContent = cartItems.length;
-
-        const creditsEl = document.querySelector('.irp-cart-credits');
-        if (creditsEl) creditsEl.textContent = totalCredits + ' Credit Hours';
-
-        updateCartBadge();
-
-        let html = '';
-
-        for (let j = 0; j < cartItems.length; j++) {
-            const section = cartItems[j];
-            const meeting = section.meetingsFaculty && section.meetingsFaculty[0] ? section.meetingsFaculty[0].meetingTime : null;
-            const days = meeting ? formatDays(meeting) : 'TBA';
-            const time = meeting ? formatTime(meeting.beginTime) + '-' + formatTime(meeting.endTime) : '';
-
-            html += '<div class="irp-cart-card" data-crn="' + escapeHTML(section.courseReferenceNumber) + '">'
-                + '<div class="irp-cart-card-header">'
-                + '<span class="irp-cart-card-title">' + escapeHTML(section.subject) + ' ' + escapeHTML(section.courseNumber) + '-' + escapeHTML(section.sequenceNumber) + '</span>'
-                + '<button type="button" class="irp-cart-remove" data-crn="' + escapeHTML(section.courseReferenceNumber) + '" aria-label="Remove">&times;</button>'
-                + '</div>'
-                + '<div class="irp-cart-card-detail">' + escapeHTML(days) + ' ' + escapeHTML(time) + '</div>'
-                + '<div class="irp-cart-card-detail">CRN: ' + escapeHTML(section.courseReferenceNumber) + '</div>'
-                + '</div>';
-        }
-
-        coursesContainer.innerHTML = html || '<p class="irp-text-muted" style="padding:16px;text-align:center;">No courses added yet</p>';
-
-        renderMiniSchedule();
-        checkConflicts();
+        if (unscheduled.length) schedule += '<p class="irp-tba">Meeting time to be announced · '+unscheduled.map(escapeHTML).join(', ')+'</p>';
+        document.querySelector('.irp-drawer-schedule').innerHTML = schedule;
+        document.querySelector('.irp-cart-count').textContent = cartItems.length;
+        document.querySelector('.irp-cart-credits').textContent = cartItems.reduce((sum,s)=>sum+(Number(s.creditHours ?? s.creditHourLow)||0),0)+' credits';
+        document.querySelector('.irp-drawer-courses').innerHTML = cartItems.map((s,i) =>
+            '<div class="irp-cart-card" style="border-color:'+scheduleColors[i%scheduleColors.length]+'"><div><strong>'+name(s)+'</strong><small>'+escapeHTML(s.courseTitle)+' · CRN '+escapeHTML(s.courseReferenceNumber)+'</small></div>'
+            +'<button class="irp-cart-remove" type="button" data-crn="'+escapeHTML(s.courseReferenceNumber)+'" aria-label="Remove '+name(s)+'">×</button></div>'
+        ).join('') || '<div class="irp-empty-state"><strong>Your week is open</strong><span>Add a section from the search results to preview its meeting times.</span></div>';
+        updateAddButtons();
     }
 
     function addToCart(section) {
-        const crn = section.courseReferenceNumber;
-        if (cartItems.some(function (item) { return item.courseReferenceNumber === crn; })) return;
-
-        fetch(BASE_PATH + '/classRegistration/addRegistrationItem', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'term=' + encodeURIComponent(currentTerm)
-                + '&courseReferenceNumber=' + encodeURIComponent(crn)
-                + '&synchronizerToken=' + encodeURIComponent(synchronizerToken)
-        })
-        .then(function (response) { return response.json(); })
-        .then(function () {
-            cartItems.push(section);
-            renderCart();
-            openDrawer();
-            updateAddButtons();
-        })
-        .catch(function (error) {
-            console.error('[IRoar Premium] Failed to add course:', error);
-        });
-    }
-
-    function removeFromCart(crn) {
-        fetch(BASE_PATH + '/classRegistration/dropRegistrationItem', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'term=' + encodeURIComponent(currentTerm)
-                + '&courseReferenceNumber=' + encodeURIComponent(crn)
-                + '&synchronizerToken=' + encodeURIComponent(synchronizerToken)
-        })
-        .then(function () {
-            cartItems = cartItems.filter(function (item) { return item.courseReferenceNumber !== crn; });
-            renderCart();
-            updateAddButtons();
-        })
-        .catch(function (error) {
-            console.error('[IRoar Premium] Failed to remove course:', error);
-        });
-    }
-
-    function addByCRN(crnValue) {
-        const crn = crnValue.trim();
-        if (!crn) return;
-
-        const section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
-
-        if (section) {
-            addToCart(section);
-        } else {
-            console.warn('[IRoar Premium] CRN ' + crn + ' not found in current search results');
-        }
-    }
-
-    function showDrawerError(message) {
-        const existing = document.querySelector('.irp-drawer-error');
-        if (existing) existing.remove();
-
-        const errorEl = document.createElement('div');
-        errorEl.className = 'irp-drawer-error';
-        errorEl.textContent = message;
-
-        const footer = document.querySelector('.irp-drawer-footer');
-        if (footer) footer.parentNode.insertBefore(errorEl, footer);
-
-        setTimeout(function () {
-            if (errorEl.parentNode) errorEl.remove();
-        }, 5000);
-    }
-
-    function renderSubmitResult(data) {
-        const existing = document.querySelector('.irp-submit-result');
-        if (existing) existing.remove();
-
-        const resultEl = document.createElement('div');
-        resultEl.className = 'irp-submit-result';
-        let html = '';
-
-        if (Array.isArray(data)) {
-            for (let i = 0; i < data.length; i++) {
-                const item = data[i];
-                if (item.statusDescription === 'Registered' || item.statusIndicator === 'RS') {
-                    html += '<div class="irp-submit-success">&#10003; ' + escapeHTML(item.subject || '') + ' ' + escapeHTML(item.courseNumber || '') + ' — Registered</div>';
-                } else {
-                    const errorMsg = item.message || item.statusDescription || 'Registration failed';
-                    html += '<div class="irp-submit-error">&#10007; ' + escapeHTML(item.subject || '') + ' ' + escapeHTML(item.courseNumber || '') + ' — ' + escapeHTML(errorMsg) + '</div>';
-                }
-            }
-        } else if (data && data.message) {
-            html = '<div class="irp-submit-error">&#10007; ' + escapeHTML(data.message) + '</div>';
-        } else {
-            html = '<div class="irp-submit-success">&#10003; Registration submitted</div>';
-        }
-
-        resultEl.innerHTML = html;
-
-        const footer = document.querySelector('.irp-drawer-footer');
-        if (footer) footer.parentNode.insertBefore(resultEl, footer);
-    }
-
-    function submitRegistration() {
-        const submitButton = document.querySelector('.irp-submit-registration');
-        if (!submitButton) return;
-
-        submitButton.disabled = true;
-        submitButton.textContent = 'Submitting...';
-
-        fetch(BASE_PATH + '/classRegistration/submitRegistration', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'synchronizerToken=' + encodeURIComponent(synchronizerToken)
-        })
-        .then(function (response) { return response.json(); })
-        .then(function (data) {
-            renderSubmitResult(data);
-        })
-        .catch(function (error) {
-            showDrawerError('Registration submission failed. Please try again.');
-            console.error('[IRoar Premium] Submit error:', error);
-        })
-        .finally(function () {
-            submitButton.disabled = false;
-            submitButton.textContent = 'Submit Registration';
-        });
-    }
-
-    function showSessionExpired() {
-        if (document.querySelector('.irp-session-banner')) return;
-
-        const banner = document.createElement('div');
-        banner.className = 'irp-session-banner';
-        banner.innerHTML = 'Session expired. <a href="/StudentRegistrationSsb/ssb/prepareRegistration/prepareRegistration">Log in again</a>';
-
-        const app = document.querySelector('.irp-app');
-        if (app) app.prepend(banner);
-    }
-
-    function loadExistingCart() {
-        fetch(BASE_PATH + '/classRegistration/getRegistrationItems')
-            .then(function (response) {
-                const contentType = response.headers.get('content-type') || '';
-                if (!contentType.includes('application/json')) {
-                    // Endpoint returned HTML (likely not in registration context yet)
-                    return null;
-                }
-                return response.json();
-            })
-            .then(function (data) {
-                if (data && Array.isArray(data)) {
-                    cartItems = data;
-                    renderCart();
-                    updateAddButtons();
-                }
-            })
-            .catch(function () {
-                // Silently ignore — cart will start empty
-            });
-    }
-
-    function toggleCartDrawer() {
-        const drawer = document.querySelector('.irp-drawer');
-        const overlay = document.querySelector('.irp-drawer-overlay');
-
-        if (!drawer || !overlay) {
-            return;
-        }
-
-        drawer.classList.toggle('irp-drawer-closed');
-        overlay.classList.toggle('irp-hidden');
+        if (!cartItems.some(item=>item.courseReferenceNumber===section.courseReferenceNumber)) cartItems.push(section);
+        renderCart();
+        toggleCartDrawer(true);
     }
 
     function toggleSidebar() {
-        const sidebar = document.querySelector('.irp-sidebar');
-
-        if (sidebar) {
-            sidebar.classList.toggle('irp-sidebar-open');
-        }
+        const open = document.querySelector('.irp-sidebar').classList.toggle('irp-sidebar-open');
+        document.querySelector('.irp-menu-toggle').setAttribute('aria-expanded', String(open));
     }
 
     function bindEvents() {
+        document.querySelector('.irp-sort-by').addEventListener('change', e=>chooseSort(e.target.value));
+        document.querySelector('.irp-sort-order').addEventListener('click', ()=>chooseSort(sortColumn));
         const debouncedAutocomplete = debounce(function (input) {
             const endpoint = input.dataset.endpoint;
             const filterKey = input.dataset.key;
@@ -1540,7 +1099,7 @@
             }
 
             fetchAutocomplete(endpoint, searchTerm).then(function (results) {
-                showAutocompleteResults(dropdown, results, filterKey);
+                if (input.value.trim() === searchTerm) showAutocompleteResults(dropdown, results, filterKey);
             }).catch(function (error) {
                 console.warn('[IRoar Premium] Autocomplete error:', error);
                 dropdown.classList.add('irp-hidden');
@@ -1554,6 +1113,8 @@
                 const input = event.target;
 
                 if (input.dataset.endpoint) {
+                    delete activeFilters[input.dataset.key];
+                    renderActiveFilterChips();
                     debouncedAutocomplete(input);
                     return;
                 }
@@ -1649,7 +1210,7 @@
             resultsContainer.addEventListener('click', function (event) {
                 const header = event.target.closest('th[data-sort-key]');
                 if (header) {
-                    handleSortClick(event);
+                    chooseSort(header.dataset.sortKey);
                     return;
                 }
 
@@ -1688,33 +1249,11 @@
 
                 const removeButton = event.target.closest('.irp-cart-remove');
                 if (removeButton) {
-                    removeFromCart(removeButton.dataset.crn);
-                    return;
-                }
-
-                if (event.target.closest('.irp-crn-add')) {
-                    const crnInput = document.querySelector('.irp-crn-input');
-                    if (crnInput) {
-                        addByCRN(crnInput.value);
-                        crnInput.value = '';
-                    }
-                    return;
-                }
-
-                if (event.target.closest('.irp-submit-registration')) {
-                    submitRegistration();
+                    cartItems = cartItems.filter(s => s.courseReferenceNumber !== removeButton.dataset.crn);
+                    renderCart();
+                    drawer.querySelector('.irp-drawer-close').focus();
                 }
             });
-
-            const crnInput = drawer.querySelector('.irp-crn-input');
-            if (crnInput) {
-                crnInput.addEventListener('keydown', function (event) {
-                    if (event.key === 'Enter') {
-                        addByCRN(crnInput.value);
-                        crnInput.value = '';
-                    }
-                });
-            }
         }
 
         const menuToggle = document.querySelector('.irp-menu-toggle');
@@ -1740,7 +1279,8 @@
                 const sidebarEl = document.querySelector('.irp-sidebar.irp-sidebar-open');
 
                 if (sidebarEl) {
-                    sidebarEl.classList.remove('irp-sidebar-open');
+                    toggleSidebar();
+                    document.querySelector('.irp-menu-toggle').focus();
                 }
             }
         });
@@ -1752,45 +1292,31 @@
         });
     }
 
-    function fetchCurrentTerm() {
-        return fetch(BASE_PATH + '/term/current')
-            .then(function (response) { return response.json(); })
-            .then(function (data) {
-                if (data && data.studentTerm) {
-                    currentTerm = String(data.studentTerm);
-                } else if (data && data.term) {
-                    currentTerm = String(data.term);
-                } else if (data && typeof data === 'string') {
-                    currentTerm = data;
-                }
-            })
-            .catch(function (error) {
-                console.warn('[IRoar Premium] Could not fetch term from API:', error);
-            });
-    }
-
     function init() {
-        extractSessionData();
-        hideOriginalUI();
-        injectCSS();
+        currentTerm = extractTerm();
+        if (!currentTerm || document.querySelector('.irp-app')) return;
         buildShell();
-        startKeepalive();
-        bindEvents();
-
-        var ready = currentTerm
-            ? Promise.resolve()
-            : fetchCurrentTerm();
-
-        ready.then(function () {
-            console.log('[IRoar Premium] Term resolved:', currentTerm || 'still missing');
-            var termDisplay = document.querySelector('.irp-term-display');
-
-            if (termDisplay && currentTerm) {
-                termDisplay.textContent = formatTermCode(currentTerm);
-            }
-
-            loadExistingCart();
+        const app = document.querySelector('.irp-app');
+        const restore = document.createElement('button');
+        restore.className = 'irp-restore';
+        restore.textContent = 'Open course planner';
+        document.body.append(restore);
+        function setPlanner(open) {
+            document.body.classList.toggle('irp-active', open);
+            app.hidden = !open;
+            restore.hidden = open;
+        }
+        restore.addEventListener('click', () => setPlanner(true));
+        app.querySelector('.irp-native').addEventListener('click', async () => {
+            ++searchSequence;
+            await searchQueue;
+            await resetBannerSearch().catch(() => {});
+            setPlanner(false);
         });
+        app.querySelector('.irp-term-display').textContent = termLabel || currentTerm;
+        setPlanner(true);
+        renderCart();
+        bindEvents();
     }
 
     if (document.readyState === 'loading') {

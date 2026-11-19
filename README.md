@@ -1,64 +1,42 @@
-# **IRoar Premium**
+# iROAR Premium
 
-IRoar Premium is a Chrome extension that enhances the Clemson class signup page by integrating valuable data about professors and grade distributions directly within the page. This extension simplifies the class selection process by displaying Rate My Professors ratings and historical grade distribution data for each professor, allowing students to make more informed decisions at a glance.
+A student-built Chrome extension for Clemson iROAR. Search the student directory, compare class sections with instructor ratings and historical grades, and preview a week of classes before opening registration.
 
-## **Usage Instructions**
+[![Watch the 38-second iROAR Premium showcase](docs/media/showcase-poster.jpg)](https://adamruns.github.io/iroarpremium/)
 
-1. **Load the Extension**: 
-   - Clone or download this repository.
-   - Open Chrome and navigate to `chrome://extensions/`.
-   - Enable **Developer mode** (toggle in the top right).
-   - Click **Load unpacked** and select the folder containing the extension files.
+**[Watch the 38-second before-and-after tour](https://adamruns.github.io/iroarpremium/)** · [Download the MP4](https://raw.githubusercontent.com/Adamruns/iroarpremium/main/docs/media/iroar-premium.mp4)
 
-2. **Navigate to Clemson's Signup Page**: Visit the [Clemson Registration Page](https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/prepareRegistration/prepareRegistration). The extension will automatically activate on the class signup page, displaying professor ratings and grade distributions directly within the interface.
+## Install
 
-> **Important Notes**:  
-> - This extension has been primarily tested with the **Plan Ahead tool** and has not been verified to work during the actual registration process. Use caution and remember you can always disable the extension via the `chrome://extensions` page if needed.
-> - This extension has not been extensively tested across all possible use cases. If you encounter any bugs or issues, feel free to submit a pull request or open an issue. Contributions are welcome!
+1. Download and extract the [extension source ZIP](https://github.com/Adamruns/iroarpremium/archive/refs/heads/main.zip), or clone this repository.
+2. In desktop Chrome, open `chrome://extensions`, enable **Developer mode**, and choose **Load unpacked**. Select the extracted folder containing `manifest.json`.
+3. Open the [Clemson iROAR portal](https://iroar.app.clemson.edu/dashboard/). Sign in and connect to the campus network or VPN as required. If a tab was already open, refresh it.
 
-## **Before and After Comparison**
+## Use it
 
-Here’s how the Clemson Plan Ahead tool looks with and without the IRoar Premium extension:
+- **Student Self-Service** groups the original service links and lets you search by name. **Show original directory** switches back to Clemson's list.
+- **Registration → Browse Classes** opens the planner after you select a term. Search by subject, instructor, course number, or another filter. Select a course title for meeting details, requirements, ratings, and grade history.
+- **Add** places a section in **My schedule** for the current page visit. The preview includes additional labs, weekends, and time conflicts. Leaving or refreshing the page clears it.
+- **Plan Ahead** saves plans through Clemson. **Register for Classes** handles enrollment. Both use Banner's own controls. **Use Banner view** also restores the original class search.
+- The interface adapts to narrow windows. Phone-width testing uses Chromium viewport emulation. Installation instructions are for desktop Chrome.
 
-### **Without IRoar Premium:**
+Ratings come from Rate My Professors when available. The bundled Clemson grade distributions span Fall 2013 through Spring 2024 and describe past classes. This is an independent student project.
 
-![Plan Ahead without IRoar Premium](images/no_extension.png)
+## Testing and video
 
-### **With IRoar Premium (No Popup):**
+The live review covered the portal's seven tabs, the student directory's 21 SIS destinations, the registration menu, course catalog, unsaved Plan Ahead search and schedule tabs, and the course planner. Course Seat Request opened its form. Course Substitution showed an eligibility restriction. Clemson also reported that the test account lacked a registration time ticket and that its student status prevented enrollment.
 
-![Plan Ahead with IRoar Premium (No Popup)](images/with_extension_no_window.png)
+See the [page-by-page verification record](docs/verification.md).
 
-### **With IRoar Premium (Popup with Grade Distribution):**
+The showcase opens with the public registration menu captured before and after the extension's stylesheet runs. The directory, classes, ratings, and schedules shown afterward use fictional fixtures rendered by the extension code. The soundtrack is generated in Python.
 
-![Plan Ahead with IRoar Premium (Popup with Grade Distribution)](images/with_extension_window.png)
+To run the desktop and 390-pixel interaction checks from the repository root:
 
-## **Features**
+```sh
+npm ci --prefix tools/showcase
+cd tools/showcase
+npx playwright install chromium
+npm run check
+```
 
-- **Integrated Professor Ratings**: Automatically displays ratings, average difficulty, number of ratings, and percentage of students who would take the professor again, directly from Rate My Professors using the GraphQL API.
-- **Grade Distribution Data**: Shows detailed grade distributions for each professor, sourced from Clemson's grade distribution CSVs.
-- **Simplified Interface**: The extension cleans up unnecessary text and formats data to fit seamlessly within the iRoar interface, ensuring a smooth user experience even on smaller screens.
-
-## **Development Highlights**
-
-### **Project Workflow**
-
-1. **Chrome Extension Icon**: Designed a unique icon for IRoar Premium using GPT-4, enhancing the extension’s branding and visibility in the browser.
-2. **Data Extraction**: Requested up-to-date grade distribution data from Clemson’s Office of Institutional Research to ensure accurate information for users.
-3. **Data Cleansing**: Updated and standardized the CSV files using Python scripts to ensure consistent headers across different semesters and years, enabling smoother data parsing.
-4. **Debugging and Testing**: Tested the extension by loading it unpacked in Chrome’s Developer Mode and debugging using the Chrome Web Developer Tools.
-5. **UI Optimization**: Styled the extension’s interface to ensure data wraps appropriately and doesn’t overflow, even on smaller screens, providing a clean and readable display.
-
-### **Data Integration and Display**
-
-- **Grade Distributions**: Implemented CSV parsing and display functionality to show grade distribution percentages next to each professor’s rating. Reformatted the data for consistency and readability, ensuring a smooth display on the Clemson signup page.
-- **Consistency Checks**: Manually edited some CSV files to correct header mismatches across datasets, ensuring that all data fields align correctly when displayed.
-
-## **Next Steps**
-
-The next major step for IRoar Premium is to get it approved on the **Chrome Web Store** for easier download and installation. This will allow users to install the extension directly from the Web Store rather than loading it manually.
-
-## **Contributing**
-
-If you notice any bugs or potential improvements, please consider contributing! Fork the repository, make your changes, and submit a pull request with a clear description of the enhancement or fix.
-
----
+To regenerate the MP4, install FFmpeg plus Python packages Pillow and NumPy, then run `npm run video` from `tools/showcase`. The public registration-menu captures are included. Run `node hub.mjs` to refresh them when the Clemson registration host is reachable.
