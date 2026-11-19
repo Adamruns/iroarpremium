@@ -9,13 +9,20 @@ function createIroarNavigationLinks() {
         ['Plan ahead', registration + 'term/termSelection?mode=plan'],
         ['View my registration', registration + 'registrationHistory/registrationHistory']
     ];
+    // Banner serves and redirects to registration home at registration/ and registration/registration.
+    const pagePath = pathname => pathname.replace(/\/+$/, '').replace(/\/ssb\/registration\/registration$/, '/ssb/registration');
+    const currentParameters = new URLSearchParams(location.search);
     const links = document.createElement('div');
     links.className = 'iroar-navigation-links';
     for (const [label, url] of destinations) {
         const link = document.createElement('a');
         link.textContent = label;
         link.href = url;
-        if (url === location.origin + location.pathname + location.search) link.setAttribute('aria-current', 'page');
+        const destination = new URL(url);
+        const isCurrentPage = destination.origin === location.origin
+            && pagePath(destination.pathname) === pagePath(location.pathname)
+            && [...destination.searchParams].every(([key, value]) => currentParameters.get(key) === value);
+        if (isCurrentPage) link.setAttribute('aria-current', 'page');
         links.append(link);
     }
     return links;
@@ -23,6 +30,8 @@ function createIroarNavigationLinks() {
 
 (() => {
     const installed = new WeakSet();
+    // A replaced menu reinstalls on a trigger that may already carry the fallback role.
+    const bannerRoles = new WeakMap();
     function install() {
         const trigger = document.querySelector('#bannerMenuDiv #bannerMenu');
         const container = document.querySelector('#bannerMenuDiv #menuContainer');
@@ -32,10 +41,12 @@ function createIroarNavigationLinks() {
         installed.add(menu);
         const links = createIroarNavigationLinks();
         trigger.setAttribute('aria-controls', container.id);
-        const originalRole = trigger.getAttribute('role');
+        if (!bannerRoles.has(trigger)) bannerRoles.set(trigger, trigger.getAttribute('role'));
+        const originalRole = bannerRoles.get(trigger);
         const sync = () => {
             const currentList = menu.querySelector('#menuList');
-            if (!currentList) return;
+            // A detached menu must not overwrite the state its replacement reports.
+            if (!menu.isConnected || !currentList) return;
             if (links.previousElementSibling !== currentList) currentList.after(links);
             const expanded = container.classList.contains('show');
             trigger.setAttribute('aria-expanded', String(expanded));
@@ -51,9 +62,10 @@ function createIroarNavigationLinks() {
         observer.observe(container, {attributes:true, attributeFilter:['class']});
         observer.observe(menu, {childList:true, subtree:true, attributes:true, attributeFilter:['role','href']});
 
-        // Banner owns opening, dismissal and Alt+M. Supply keyboard navigation for the fallback.
+        // Banner owns opening, dismissal and Alt+M. Supply keyboard navigation for the fallback,
+        // and leave modified keys such as Cmd+Arrow and Ctrl+Home to the browser.
         trigger.parentElement.addEventListener('keydown', event => {
-            if (!menu.isConnected || links.hidden) return;
+            if (!menu.isConnected || links.hidden || event.altKey || event.ctrlKey || event.metaKey) return;
             const open = container.classList.contains('show');
             if (event.target === trigger && ([' ', 'ArrowDown', 'ArrowUp'].includes(event.key))) {
                 event.preventDefault();

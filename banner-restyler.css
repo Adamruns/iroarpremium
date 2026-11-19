@@ -12,6 +12,13 @@
 }
 .iroar-banner #title-panel :is(h1,h2,.title) { color: white !important; font-weight: 650; }
 .iroar-banner #breadcrumb-panel { background: #f6f4f8 !important; }
+/* Clemson's theme widens the wordmark link to 600px, so on phones it wraps out of the header and
+   scrolls the body sideways. Leave room for the menu button, the link's 2em of spacing and the
+   account controls, and shrink the 300px wordmark only when the link is narrower. */
+.iroar-banner #branding {
+    width: min(600px, calc(100vw - 180px));
+    background-size: min(300px, 100%) auto;
+}
 .iroar-banner #breadcrumb-panel a,
 .iroar-banner #content a:not([class]):not([role]) { color: #693973; }
 .iroar-banner :is(#content,#mainContent,.page-content) :is(input,select,textarea) { accent-color: #784a90; }
@@ -117,6 +124,10 @@
 }
 :is(#menu.iroar-empty-menu,.irp-site-nav) .iroar-navigation-links a:is(:hover,:focus-visible,[aria-current="page"]) {
     background: #f2edf6; color: #412456;
+}
+/* The tint alone also marks hover and focus, so the current page gets its own edge. */
+:is(#menu.iroar-empty-menu,.irp-site-nav) .iroar-navigation-links a[aria-current="page"] {
+    box-shadow: inset 3px 0 #a63e06;
 }
 
 /* The registration history grid assigns fixed column widths and clips long course and status text. */

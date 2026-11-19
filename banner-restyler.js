@@ -31,7 +31,7 @@
         }
     }
     const apply = () => {
-        if (!document.querySelector('#content, #mainContent, #title-panel, #landing-paths, .page-content, #banner-header-main-section')) return;
+        if (!document.querySelector('#content, #mainContent, #title-panel, #landing-paths, .page-content, #header-main-section, #banner-header-main-section')) return;
         document.documentElement.classList.add('iroar-banner');
         const menu = document.getElementById('landingPathMenu');
         if (menu && !menu.dataset.iroarEnhanced) {
@@ -43,12 +43,6 @@
             });
             const observer = new MutationObserver(() => decorateMenu(menu));
             observer.observe(menu,{childList:true,subtree:true});
-        }
-        if (!document.querySelector('meta[name="viewport"]')) {
-            const meta = document.createElement('meta');
-            meta.name = 'viewport';
-            meta.content = 'width=device-width, initial-scale=1';
-            document.head.append(meta);
         }
     };
     apply();
