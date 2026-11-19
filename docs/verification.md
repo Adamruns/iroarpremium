@@ -1,4 +1,14 @@
-# iROAR Premium 2.1 verification
+# iROAR Premium verification
+
+## Version 2.2.0 · November 19, 2026
+
+A fresh pass opened all 21 SIS directory destinations, both registration term selectors, the directory and the portal at desktop and narrow window sizes. All 50 page loads completed without horizontal overflow. The table below identifies the individual destinations. Account-based eligibility and registration restrictions still apply.
+
+The signed-in portal returned three services for “aid.” Student Self-Service retained 37 native links and added three shortcuts. The registration hub exposed six actions for the signed-in role. In Browse Classes, searching for `ACCT 2010` returned 17 sections. Ten had course-and-instructor grade history. Opening a section showed Spring 2026 history for ACCT 2010 section 003 and the date its instructor rating was checked.
+
+The service worker loaded 75,156 published grade rows. A Spring 2026 AAH 1020 sample matched the official PDF. Live Rate My Professors lookups matched two Clemson profiles and returned rating counts of 52 and 14. The browser fixture checks also exercised the directory category filter and quick course-code search on desktop and at phone width.
+
+## Version 2.1.0 page inventory
 
 Tested November 19, 2026 in regular Chrome with the unpacked extension and an authenticated Clemson session. Each of the 21 SIS links in the student directory opened in a 1,350-pixel and a 520-pixel browser window. Chrome's per-site zoom produced narrow CSS viewports of 520 or 578 pixels. Each destination passed the document-width check at both sizes. The directory exposed all 37 original links.
 

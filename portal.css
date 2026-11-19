@@ -16,3 +16,12 @@
     #page_body .nav-tabs .nav-link { width: 100%; min-height: 44px; }
     #page_body .tab-item { margin: 0; }
 }
+#page_body .iroar-portal-search { margin: 12px 0 20px; padding: clamp(18px,3vw,32px); border-radius: 15px; background: #30213e; color: white; border-left: 5px solid #ff8745; }
+.iroar-portal-search label { display: block; margin: 0 0 10px; color: white; font-size: clamp(20px,3vw,30px); font-weight: 700; letter-spacing: -.03em; }
+.iroar-portal-search input { display: block; width: min(100%,520px); padding: 10px 14px; min-height: 44px; font: inherit; color: #2e2435; background: white; border: none; border-radius: 8px; }
+.iroar-portal-search p { margin: 12px 0 0; color: #f1e8f4; }
+.iroar-portal-search p:empty { display:none; }
+.iroar-portal-search ul { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr)); gap:8px; margin:12px 0 0; padding:0; list-style:none; }
+.iroar-portal-search li a { display:block; height:100%; color:#32213e; background:#fff; border-radius:8px; padding:12px; text-decoration:none; }
+.iroar-portal-search li a:hover {text-decoration:underline;}
+#page_body :is(.nav-tabs,.tab-content,.iroar-portal-search ul)[hidden] {display:none!important;}

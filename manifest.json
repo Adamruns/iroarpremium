@@ -1,14 +1,13 @@
 {
   "manifest_version": 3,
   "name": "IRoar Premium",
-  "version": "2.1.0",
-  "description": "Enhances Clemson iROAR with a modern redesigned UI, Rate My Professors ratings, and grade distribution data.",
+  "version": "2.2.0",
+  "description": "Search Clemson iROAR services and classes, compare grade history and instructor ratings, and preview your weekly schedule.",
   "permissions": [
     "storage"
   ],
   "host_permissions": [
-    "https://www.ratemyprofessors.com/*",
-    "https://*.sis.clemson.edu/*"
+    "https://www.ratemyprofessors.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -62,6 +61,9 @@
       ],
       "css": [
         "portal.css"
+      ],
+      "js": [
+        "portal.js"
       ]
     },
     {

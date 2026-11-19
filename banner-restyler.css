@@ -76,3 +76,17 @@
     .iroar-banner #content .section-header { overflow-wrap: anywhere; }
     .iroar-banner #landing-paths { overflow-y: auto; }
 }
+.iroar-banner #landing-paths #select-msg { background:#f8f6f9; border:none; border-bottom:1px solid #d4cbd8; border-radius:0; padding:12px 0 18px; }
+.iroar-banner #landing-paths #select-msg .title {color:#31213c; font-weight:710;}
+.iroar-banner #landingPathMenu .landing-path {overflow:hidden;box-shadow:0 3px 12px #39234809;}
+.iroar-banner #landingPathMenu .landing-path a:has(.iroar-task-icon) {background-image:none!important; display:grid;grid-template-columns:42px minmax(0,1fr);grid-template-rows:auto 1fr;gap:6px 14px;align-content:start;padding:20px 16px;min-height:120px;}
+.iroar-banner #landingPathMenu .iroar-task-icon {grid-row:1/3; box-sizing:border-box;width:42px;height:42px;padding:10px;color:#603a75; background:#f1eaf5;border-radius:10px;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;fill:none;}
+.iroar-banner #landingPathMenu .landing-path a:has(.iroar-task-icon) > :is(.title,div) {grid-column:2;margin:0;}
+.iroar-banner #landingPathMenu .landing-path:has(#classSearchLink) {background:#392448;border-color:#392448;}
+.iroar-banner #landingPathMenu #classSearchLink .title {color:white;}
+.iroar-banner #landingPathMenu #classSearchLink .sub-link {color:#efe6f1;}
+.iroar-banner #landingPathMenu #classSearchLink .iroar-task-icon {background:#ffcfac;color:#653110;}
+.iroar-banner #content .section-header {border-inline-start:3px solid #ac78bd;padding-inline-start:12px;}
+.iroar-banner #content .ui-tabs-nav li a {padding-inline:12px;line-height:1.5;}
+.iroar-banner #content .ui-tabs-nav li.ui-tabs-active a {font-weight:700;}
+@media(max-width:650px){.iroar-banner #landingPathMenu .landing-path a:has(.iroar-task-icon){min-height:80px;padding:13px;gap:4px 11px}.iroar-banner #content .ui-tabs-nav li a{padding:8px 10px}}

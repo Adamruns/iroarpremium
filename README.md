@@ -2,25 +2,27 @@
 
 A student-built Chrome extension for Clemson iROAR. Search the student directory, compare class sections with instructor ratings and historical grades, and preview a week of classes before opening registration.
 
-[![Watch the 38-second iROAR Premium showcase](docs/media/showcase-poster.jpg)](https://adamruns.com/iroarpremium/)
+[![Watch the 27-second iROAR Premium showcase](docs/media/showcase-poster.jpg)](https://adamruns.com/iroarpremium/)
 
-**[Watch the 38-second before-and-after tour](https://adamruns.com/iroarpremium/)** · [Download the MP4](https://raw.githubusercontent.com/Adamruns/iroarpremium/main/docs/media/iroar-premium.mp4)
+**[Watch the 27-second before-and-after tour](https://adamruns.com/iroarpremium/)** · [Download the MP4](https://raw.githubusercontent.com/Adamruns/iroarpremium/main/docs/media/iroar-premium.mp4)
 
 ## Install
 
-1. Download and extract the [extension source ZIP](https://github.com/Adamruns/iroarpremium/archive/refs/heads/main.zip), or clone this repository.
-2. In desktop Chrome, open `chrome://extensions`, enable **Developer mode**, and choose **Load unpacked**. Select the extracted folder containing `manifest.json`.
-3. Open the [Clemson iROAR portal](https://iroar.app.clemson.edu/dashboard/). Sign in and connect to the campus network or VPN as required. If a tab was already open, refresh it.
+Install [iROAR Premium from the Chrome Web Store](https://chromewebstore.google.com/detail/iroar-premium/kfiijlenjablmbgdbbidepbljlbjjhpf) in desktop Chrome. Open the [Clemson iROAR portal](https://iroar.app.clemson.edu/dashboard/). Sign in and connect to the campus network or VPN as required. If iROAR was already open, refresh the tab.
+
+To try the exact 2.2.0 build manually, extract the [packaged extension ZIP](https://github.com/Adamruns/iroarpremium/releases/download/v2.2.0/iroar-premium-2.2.0.zip). Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`.
 
 ## Use it
 
-- **Student Self-Service** groups the original service links and lets you search by name. **Show original directory** switches back to Clemson's list.
-- **Registration → Browse Classes** opens the planner after you select a term. Search by subject, instructor, course number, or another filter. Select a course title for meeting details, requirements, ratings, and grade history.
+- **Find a campus service** searches all seven iROAR portal tabs. **Student Self-Service** adds shortcuts for classes, registration and grades. Search services by name or choose a category. **Show original directory** switches back to Clemson's list.
+- **Registration → Browse Classes** opens the planner after you select a term. Enter a course code, title or CRN in **Find a class**. Open **Filters** on a narrow screen to refine by instructor, subject or meeting details. Select a course title for meeting details, requirements, ratings, and grade history.
 - **Add** places a section in **My schedule** for the current page visit. The preview includes additional labs, weekends, and time conflicts. Leaving or refreshing the page clears it.
 - **Plan Ahead** saves plans through Clemson. **Register for Classes** handles enrollment. Both use Banner's own controls. **Use Banner view** also restores the original class search.
 - The interface adapts to narrow windows. Phone-width testing uses Chromium viewport emulation. Installation instructions are for desktop Chrome.
 
-Ratings come from Rate My Professors when available. The bundled Clemson grade distributions span Fall 2013 through Spring 2024 and describe past classes. This is an independent student project.
+Ratings come from a matching Clemson profile on Rate My Professors. A successful lookup is reused for up to 24 hours. Grade history spans Fall 2013 through Spring 2026. Browse Classes compares reported sections of the selected course taught by that instructor. [Grade data sources and coverage](docs/grade-sources.md) · [Privacy policy](https://adamruns.com/iroarpremium/privacy.html)
+
+This is an independent student project.
 
 ## Testing and video
 
@@ -28,7 +30,7 @@ The live review covered the portal's seven tabs, the student directory's 21 SIS 
 
 See the [page-by-page verification record](docs/verification.md).
 
-The showcase opens with the public registration menu captured before and after the extension's stylesheet runs. The directory, classes, ratings, and schedules shown afterward use fictional fixtures rendered by the extension code. The soundtrack is generated in Python.
+The showcase opens with the public registration menu captured before and after the extension's stylesheet runs. The directory, classes, ratings, and schedules shown afterward use fictional fixtures rendered by the extension code. Python generates the reveal, animated walkthrough and original soundtrack.
 
 To run the desktop and 390-pixel interaction checks from the repository root:
 

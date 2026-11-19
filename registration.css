@@ -131,3 +131,16 @@ body.irp-active > :not(.irp-app) { display: none !important; }
 .irp-sort-controls[hidden] { display: none; }
 .irp-sort-controls :is(select,button) { padding: 5px 6px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); }
 .irp-sort-controls select { margin-left: 4px; }
+.irp-lookup { padding:clamp(14px,2vw,24px); border:1px solid #d7cbdf; border-left:4px solid #cb7337; border-radius:13px; margin-bottom:16px; background:linear-gradient(105deg,#fff,#f5f0f7); }
+.irp-lookup label {display:block;margin-bottom:8px;color:#37263f;font-size:17px;font-weight:680;}
+.irp-lookup div {display:flex;gap:8px;}
+.irp-lookup input {flex:1;min-width:0;min-height:44px;padding:8px 12px;border:1px solid #bbaec3;border-radius:7px;background:white;color:var(--ink);}
+.irp-lookup button,.irp-browse-all {padding:8px 13px; border:1px solid #472a61; border-radius:7px; color:white; background:#472a61; font-weight:650;}
+.irp-browse-all {margin-top:8px;color:#472a61;background:white;}
+.irp-more {border-top:1px solid var(--line);margin-top:16px;padding-top:10px;}
+.irp-more summary {padding:6px 0 12px;font-weight:640;color:#4c305d;cursor:pointer;}
+.irp-menu-toggle span {font-size:14px;}
+.irp-table .irp-title {color:#442957;font-weight:690;}
+.irp-rating-date {font-size:13px;color:var(--muted);}
+@media(max-width:550px){.irp-topbar{gap:6px}.irp-topbar-left{gap:5px}.irp-menu-toggle svg{width:15px}.irp-topbar .irp-brand{font-size:15px}.irp-lookup input{font-size:16px}.irp-table tr[data-crn] td:is([data-label="Difficulty"],[data-label="Take again"]){display:none}.irp-table tr[data-crn]{border-left:3px solid #e6d9ed}.irp-lookup button{font-size:14px}.irp-term-display{font-size:12px}}
+@media(max-width:375px){.irp-topbar .irp-brand{display:none}.irp-lookup div{flex-wrap:wrap}.irp-lookup input{flex-basis:100%}}

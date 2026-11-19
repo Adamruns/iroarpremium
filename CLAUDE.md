@@ -40,12 +40,12 @@ No build process required - vanilla JavaScript, CSS, and static CSV files.
 
 ### Grade Distribution Data
 
-CSV files in `grade_distributions_final/` contain historical grade data (2013-2024). Format: Course info + grade percentages (A, B, C, D, F, P, F(P), W, I). Background.js searches by professor first/last name across all CSV files.
+CSV files in `grade_distributions_final/` contain historical grade data (Fall 2013 through Spring 2026). Format: Course info + grade percentages (A, B, C, D, F, P, F(P), W, I). Background.js searches by professor first/last name across all CSV files.
 
 ### Caching
 
-- **RMP data**: Two-tier cache (in-memory Map + `chrome.storage.local`) with 7-day TTL. Caches both successful lookups and "not found" results.
-- **CSV data**: In-memory cache loads all CSV files once per service worker lifetime, pre-computes lowercase search text for fast filtering.
+- **RMP data**: Two-tier cache (in-memory Map + `chrome.storage.local`) with a 24-hour lifetime for matched Clemson profiles and two hours for confirmed misses. Network errors are retried on the next lookup.
+- **CSV data**: In-memory cache loads all CSV files once per service worker lifetime, indexes instructor names and returns newest sections first.
 
 ## Key Implementation Details
 

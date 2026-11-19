@@ -13,8 +13,8 @@ HERE = Path(__file__).resolve().parent
 FRAMES = HERE / ".frames"
 MEDIA = HERE.parents[1] / "docs" / "media"
 MEDIA.mkdir(parents=True, exist_ok=True)
-W, H, FPS = 1600, 900, 24
-LENGTH = 38
+W, H, FPS = 1600, 900, 30
+LENGTH = 27
 INK, PAPER, WHITE, PEACH = "#302037", "#f5f1ed", "#fffdf9", "#ffac70"
 
 @lru_cache(None)
@@ -79,76 +79,113 @@ def phone(im, name, x, y, h):
     # Place a second bezel over the edge of the capture.
     d.rounded_rectangle((x-3,y-3,x+w+2,y+h+2),23,outline="#201825",width=5)
 
+def cursor(im, xy, pulse=0):
+    x,y=xy
+    d=ImageDraw.Draw(im)
+    if 0<pulse<1:
+        r=round(10+27*pulse)
+        d.ellipse((x-r,y-r,x+r,y+r),outline="#b65016",width=max(1,round(5*(1-pulse))))
+    d.polygon([(x,y),(x+6,y+30),(x+13,y+21),(x+23,y+19)],fill=INK,outline=WHITE,width=2)
+
+def reveal(before, after, fraction, tilt=80, accent=True):
+    if fraction<=0: return before
+    if fraction>=1: return after
+    edge=lerp(-tilt,W+tilt,fraction)
+    mask=Image.new("L",(W,H))
+    ImageDraw.Draw(mask).polygon([(0,0),(edge+tilt,0),(edge-tilt,H),(0,H)],fill=255)
+    result=Image.composite(after,before,mask)
+    if accent:
+        ImageDraw.Draw(result).line((edge+tilt,0,edge-tilt,H),fill=PEACH,width=5)
+    return result
+
+def directory_shot(name):
+    src=asset(name)
+    area=Image.new("RGB",(src.width,495),"#faf8fa")
+    area.paste(src,(0,0))
+    return area
+
 def scene(index,t):
-    dark = index in [0,4,6]
+    dark=index in (0,4,6)
     im=backdrop(dark).copy()
     if index==0:
         header(im,"Clemson student tools",True)
-        x=lerp(-25,0,ease(t/.8))
-        text(im,(77+x,233),"Registration,",112,WHITE,True)
-        text(im,(77+x,366),"reworked.",125,PEACH,serif=True)
-        text(im,(84,561),"A tour of iROAR Premium",37,WHITE)
-        phone(im,"phone-week",lerp(1140,1095,ease(t/2.4)),124,675)
+        text(im,(lerp(-80,78,ease(t/.48)),235),"Registration,",112,WHITE,True)
+        text(im,(lerp(-160,78,ease((t-.12)/.48)),368),"reworked.",125,PEACH,serif=True)
+        text(im,(84,lerp(621,556,ease((t-.25)/.48))),"From finding a class to fitting it in.",37,WHITE)
+        phone(im,"phone-week",lerp(1475,1070,ease(t/.85)),lerp(197,118,ease(t/1.4)),681)
     elif index==1:
         header(im,"Registration home")
-        text(im,(72,100),"The same five destinations.",63,INK,True)
-        # A moving cut reveals both versions of the same public Banner menu.
-        xy=(73,222); size=(1454,603)
+        text(im,(72,105),"Find your next step.",65,INK,True)
         before=im.copy(); after=im.copy()
-        for canvas,name in [(before,"hub-before"),(after,"hub-after")]:
-            card(canvas,asset(name),xy,size,align=(.5,0))
-        k=ease((t-1.75)/1.85); edge=int(W*k)
-        im=before
-        if edge: im.paste(after.crop((0,0,edge,H)),(0,0))
-        if 0<k<1: ImageDraw.Draw(im).line((edge,213,edge,835),fill="#c25b23",width=5)
-        text(im,(76,177),"Original Banner" if k<.5 else "With iROAR Premium",28,"#784520",True)
+        for canvas,name,label in [(before,"hub-before","Original Banner"),(after,"hub-after","With iROAR Premium")]:
+            text(canvas,(76,189),label,28,"#784520",True)
+            card(canvas,asset(name),(73,245),(1454,565),align=(.5,0))
+        im=reveal(before,after,ease((t-1)/1.15),tilt=145)
     elif index==2:
-        header(im,"Student directory")
-        text(im,(72,110),"Find the service you need.",63,INK,True)
-        text(im,(74,196),"Search registration, records, financial aid, and student accounts.",30)
-        img=asset("directory")
-        card(im,img,(72,lerp(282,258,ease(t/1.6))),(1454,570),crop=(0,0,img.width,470))
+        header(im,"Student Self-Service")
+        text(im,(72,107),"Go straight to your grades.",62,INK,True)
+        text(im,(75,195),"Search across services or filter by category.",30)
+        before=im.copy(); after=im.copy()
+        for canvas,name in [(before,"directory"),(after,"directory-filter")]:
+            card(canvas,directory_shot(name),(72,262),(1454,555))
+        im=reveal(before,after,ease((t-1.4)/.36),tilt=0,accent=False)
+        pos=ease((t-1.68)/.83)
+        cursor(im,(lerp(1110,177,pos),lerp(352,677,pos)),(t-1.19)/.44 if t<1.65 else (t-2.63)/.46)
     elif index==3:
-        header(im,"Browse Classes    /    Example courses")
-        text(im,(72,108),"Compare sections.",67,INK,True)
-        text(im,(75,198),"Meeting times, instructor ratings, seats, and past grades in one view.",29)
-        shot=asset("classes")
-        card(im,shot,(70,274),(1460,485),crop=(299,70,1438,450))
-        if t>2.5:
+        header(im,"Browse Classes   /   Example courses")
+        text(im,(72,105),"Compare your sections.",64,INK,True)
+        text(im,(75,196),"Meeting times, open seats, instructor ratings and past grades.",30)
+        card(im,asset("classes"),(70,267),(1460,525),crop=(294,86,1429,494))
+        if t>1.45:
+            y=lerp(930,252,ease((t-1.45)/.55))
             panel=asset("detail")
-            y=lerp(910,515,ease((t-2.5)/.8))
-            card(im,panel,(517,y),(1005,313),crop=(0,0,panel.width,panel.height),align=(1,0))
+            # Bring the rating and the complete grade chart into the same close-up.
+            card(im,panel,(949,y),(560,557),crop=(690,0,1066,374),align=(1,0))
+        if .35<t<1.95:
+            k=ease((t-.35)/.75)
+            cursor(im,(lerp(908,172,k),lerp(588,753,k)),(t-1.1)/.49)
     elif index==4:
-        header(im,"Schedule preview    /    Example courses",True)
+        header(im,"My schedule   /   Example courses",True)
         text(im,(73,240),"See your week",78,WHITE,True)
         text(im,(75,338),"take shape.",88,PEACH,serif=True)
-        text(im,(78,505),"Preview lectures, labs, and weekends.",32,WHITE)
-        text(im,(78,555),"Overlapping sections get a warning.",32,WHITE)
-        sec="week" if t<3.4 else "conflict"
-        card(im,asset(sec),(947,112),(520,713),crop=(0,0,470,645))
+        stages=[(0,"week-0","Start with a lecture."),(.82,"week-1","Add a second section."),(1.55,"week-3","Fit in another course."),(2.27,"week","Check the weekend."),(3.23,"conflict","Spot a time conflict.")]
+        idx=max(i for i,(start,_,_) in enumerate(stages) if t>=start)
+        start,name,label=stages[idx]
+        text(im,(78,505),label,37,WHITE)
+        for i in range(len(stages)):
+            left=80+i*55
+            ImageDraw.Draw(im).rounded_rectangle((left,583,left+42,590),3,fill=PEACH if i<=idx else "#76637c")
+        size=(514,710); xy=(940,110); crop=(0,0,470,650)
+        card(im,asset(name),xy,size,crop=crop)
+        if idx and t-start<.16:
+            prev=im.copy()
+            card(prev,asset(stages[idx-1][1]),xy,size,crop=crop)
+            im=Image.blend(prev,im,ease((t-start)/.16))
     elif index==5:
-        header(im,"Phone-width layout    /    Example courses")
-        text(im,(66,283),"A schedule",71,INK,True)
-        text(im,(66,375),"that fits.",85,"#84421e",serif=True)
-        text(im,(70,513),"Check a section and preview",30)
-        text(im,(70,558),"your week on a narrow screen.",30)
-        phone(im,"phone-search",lerp(745,705,ease(t/1.6)),144,659)
-        phone(im,"phone-week",lerp(1165,1100,ease((t-.25)/1.5)),125,687)
+        header(im,"Phone-width layout   /   Example courses")
+        text(im,(66,284),"A schedule",71,INK,True)
+        text(im,(66,376),"that fits.",85,"#84421e",serif=True)
+        text(im,(70,514),"From class search to",33)
+        text(im,(70,560),"your week at a glance.",33)
+        phone(im,"phone-search",lerp(908,700,ease(t/.72)),lerp(345,151,ease(t/.72)),655)
+        phone(im,"phone-week",lerp(1360,1093,ease((t-.18)/.83)),lerp(422,125,ease((t-.18)/.83)),684)
     else:
-        header(im,"Open-source Chrome extension",True)
-        text(im,(82,267),"iROAR Premium",104,WHITE,True)
-        text(im,(85,448),"Get the extension on GitHub",46,PEACH,serif=True)
-        text(im,(87,554),"github.com/Adamruns/iroarpremium",37,WHITE)
+        header(im,"Independent Clemson student project",True)
+        text(im,(lerp(-90,79,ease(t/.5)),263),"iROAR Premium",104,WHITE,True)
+        text(im,(85,436),"Find it in the Chrome Web Store.",49,PEACH,serif=True)
+        text(im,(87,554),"adamruns.com/iroarpremium",38,WHITE)
     return im
 
-TIMES=[0,3.5,10,14.5,21.5,28.5,34,38]
+TIMES=[0,2.6,6.7,10.6,15.6,20.8,24.5,27]
 def frame(t):
     i=next(i for i in range(len(TIMES)-1) if t<TIMES[i+1])
     local=t-TIMES[i]
     im=scene(i,local)
-    if i and local<.26:
-        prev=scene(i-1,TIMES[i]-TIMES[i-1])
-        im=Image.blend(prev,im,ease(local/.26))
+    if i and local<.22:
+        im=reveal(scene(i-1,TIMES[i]-TIMES[i-1]),im,ease(local/.22),tilt=130)
+    d=ImageDraw.Draw(im)
+    d.rectangle((0,H-6,W,H),fill="#665269")
+    d.rectangle((0,H-6,lerp(0,W,t/LENGTH),H),fill=PEACH)
     return im
 
 def score(dest):
@@ -162,13 +199,13 @@ def score(dest):
         env=np.minimum(1,t/.014)*np.minimum(1,(duration-t)/.12)*np.exp(-decay*t)
         sound=np.sin(2*np.pi*frequency*t)+.18*np.sin(4*np.pi*frequency*t)
         audio[offset:offset+n]+=level*env*sound
-    beat=.5
+    beat=.4138
     for step in range(int(LENGTH/beat)):
         chord=[[50,57,62,65],[46,53,58,62],[53,60,64,69],[48,55,60,64]][(step//8)%4]
         hz=lambda midi: 440*2**((midi-69)/12)
         if step%4==0: note(step*beat,hz(chord[0]-12),1.8,.17,1.8)
         note(step*beat,hz(chord[[0,1,2,1,3,2,1,2][step%8]]+12),1.1,.06,4)
-        if step%2==1: note(step*beat+.25,hz(chord[2]+12),.7,.025,5)
+        if step%2==1: note(step*beat+beat/2,hz(chord[2]+12),.7,.025,5)
     audio*=np.minimum(1,np.arange(len(audio))/(rate*.8))*np.minimum(1,np.arange(len(audio))[::-1]/(rate*1.6))
     with wave.open(str(dest),"wb") as f:
         f.setparams((1,2,rate,0,"NONE","not compressed"))

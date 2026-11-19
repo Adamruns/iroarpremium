@@ -9,7 +9,7 @@
             port.postMessage(message);
         });
     }
-    async function showGrades(button, professor) {
+    async function showGrades(button, professor, displayName) {
         const dialog = document.createElement('dialog');
         dialog.className = 'iroar-grade-dialog';
         const title = document.createElement('h2');
@@ -26,13 +26,14 @@
         dialog.showModal();
         const parts = professor.split(/\s+/);
         try {
-            const result = await ask('grade-distribution',{type:'gradeDistribution',professor:{firstName:parts[0],lastName:parts.at(-1)}});
+            const result = await ask('grade-distribution',{type:'gradeDistribution',professor:{displayName,firstName:parts[0],lastName:parts.at(-1)}});
+            if (result.error) throw new Error(result.error);
             body.textContent = result.data.length ? '' : 'No grade history available.';
-            for (const {semester,year,data} of [...result.data].reverse()) {
+            for (const {semester,year,data} of result.data) {
                 const item = document.createElement('p');
                 const headline = document.createElement('strong');
                 headline.textContent = [semester, year, '·', data[0], data[1], data[2]].join(' ');
-                item.append(headline, document.createElement('br'), ['A','B','C','D','F','P','F(P)','W','I'].map((g,i)=>g+' '+(data[i+4]||'0%')).join(' · '));
+                item.append(headline, document.createElement('br'), ['A','B','C','D','F','P','F(P)','W','I'].map((g,i)=>g+' '+(data[i+4]||'unreported')).join(' · '));
                 body.append(item);
             }
         } catch { body.textContent = 'Grade history could not be loaded.'; }
@@ -48,7 +49,7 @@
             box.className = 'iroar-prof';
             const grades = document.createElement('button');
             grades.type = 'button'; grades.textContent = 'Grade history';
-            grades.addEventListener('click', () => showGrades(grades, professor));
+            grades.addEventListener('click', () => showGrades(grades, professor, link.textContent.trim()));
             const rating = document.createElement('a');
             rating.target = '_blank'; rating.rel = 'noopener noreferrer';
             rating.href = 'https://www.ratemyprofessors.com/search/teachers?query='+encodeURIComponent(professor);

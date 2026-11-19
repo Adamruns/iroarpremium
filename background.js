@@ -1,31 +1,38 @@
-// Clemson: U2Nob29sLTI0Mg==
-// found at: inspect->network->graphql->payload
-// Auth token is just the basic everyone uses I guess
+// Public client identifier used by Rate My Professors for its read-only teacher search.
 const AUTH_TOKEN = 'dGVzdDp0ZXN0';
-const SCHOOL_ID = ['U2Nob29sLTI0Mg=='];
-
-// Cache configuration
-const RMP_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
-
-// In-memory cache for parsed CSV data (persists for service worker lifetime)
+const CLEMSON_ID = 'U2Nob29sLTI0Mg==';
+const DAY = 24 * 60 * 60 * 1000;
+const rmpMemoryCache = new Map();
+const pendingRatings = new Map();
 let csvLoad = null;
 
-// In-memory cache for RMP data (also backed by chrome.storage.local)
-const rmpMemoryCache = new Map();
-
-// List of grade distribution CSV files within the extension
 const gradeDistributionFiles = [
-    'grade_distributions_final/2013Fall.csv', 'grade_distributions_final/2014Fall.csv',
-	'grade_distributions_final/2014Spring.csv', 'grade_distributions_final/2015Fall.csv',
-	'grade_distributions_final/2015Spring.csv', 'grade_distributions_final/2016Fall.csv',
-	'grade_distributions_final/2016Spring.csv', 'grade_distributions_final/2017Fall.csv',
-	'grade_distributions_final/2018Spring.csv', 'grade_distributions_final/2018Fall.csv',
-	'grade_distributions_final/2019Spring.csv', 'grade_distributions_final/2019Fall.csv',
-	'grade_distributions_final/2020Spring.csv', 'grade_distributions_final/2020Fall.csv',
-	'grade_distributions_final/2021Spring.csv', 'grade_distributions_final/2021Fall.csv',
-	'grade_distributions_final/2022Spring.csv', 'grade_distributions_final/2022Fall.csv',
-	'grade_distributions_final/2023Spring.csv', 'grade_distributions_final/2023Fall.csv',
-	'grade_distributions_final/2024Spring.csv', 'grade_distributions_final/2017Spring.csv',
+    'grade_distributions_final/2026Spring.csv',
+    'grade_distributions_final/2025Fall.csv',
+    'grade_distributions_final/2025Spring.csv',
+    'grade_distributions_final/2024Fall.csv',
+    'grade_distributions_final/2024Spring.csv',
+    'grade_distributions_final/2023Fall.csv',
+    'grade_distributions_final/2023Spring.csv',
+    'grade_distributions_final/2022Fall.csv',
+    'grade_distributions_final/2022Spring.csv',
+    'grade_distributions_final/2021Fall.csv',
+    'grade_distributions_final/2021Spring.csv',
+    'grade_distributions_final/2020Fall.csv',
+    'grade_distributions_final/2020Spring.csv',
+    'grade_distributions_final/2019Fall.csv',
+    'grade_distributions_final/2019Spring.csv',
+    'grade_distributions_final/2018Fall.csv',
+    'grade_distributions_final/2018Spring.csv',
+    'grade_distributions_final/2017Fall.csv',
+    'grade_distributions_final/2017Spring.csv',
+    'grade_distributions_final/2016Fall.csv',
+    'grade_distributions_final/2016Spring.csv',
+    'grade_distributions_final/2015Fall.csv',
+    'grade_distributions_final/2015Spring.csv',
+    'grade_distributions_final/2014Fall.csv',
+    'grade_distributions_final/2014Spring.csv',
+    'grade_distributions_final/2013Fall.csv',
 ];
 
 // Parse CSV data into a usable format (handles quoted fields with commas)
@@ -95,7 +102,7 @@ async function readGradeFiles() {
 
         // Store each row with its metadata
         for (const row of rows) {
-            csvCache.push({ year, semester, data: row, searchText: row.join(' ').toLowerCase() });
+            csvCache.push({ year, semester, data: row, instructor: normalizeName(row.at(-1)) });
         }
     }
 
@@ -103,25 +110,35 @@ async function readGradeFiles() {
     return csvCache;
 }
 
-// Load and search CSVs for grade distribution by professor (uses cache)
-async function searchGradeDistributions(professorFirstName, professorLastName) {
-    const allData = await loadAllCSVData();
-    const firstNameLower = professorFirstName.toLowerCase();
-    const lastNameLower = professorLastName.toLowerCase();
+function normalizeName(name) {
+    return String(name || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+        .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
 
-    return allData.filter(entry =>
-        entry.searchText.includes(firstNameLower) && entry.searchText.includes(lastNameLower)
-    ).map(({ year, semester, data }) => ({ year, semester, data }));
+function nameParts(professor) {
+    if (professor.displayName?.includes(',')) {
+        const [family, given] = professor.displayName.split(',');
+        return [normalizeName(family), normalizeName(given).split(' ')[0]];
+    }
+    return [normalizeName(professor.lastName), normalizeName(professor.firstName).split(' ')[0]];
+}
+
+async function searchGradeDistributions(professor) {
+    const [family, first] = nameParts(professor);
+    if (!family || !first) return [];
+    const prefix = family + ' ' + first;
+    return (await loadAllCSVData()).filter(entry => entry.instructor === prefix || entry.instructor.startsWith(prefix + ' '))
+        .map(({year,semester,data}) => ({year,semester,data}));
 }
 
 // RMP Cache helpers
 async function getRMPFromCache(professorName) {
-    const cacheKey = `rmp_${professorName.toLowerCase()}`;
+    const cacheKey = `rmp_v22_${professorName.toLowerCase()}`;
 
     // Check memory cache first
     if (rmpMemoryCache.has(cacheKey)) {
         const cached = rmpMemoryCache.get(cacheKey);
-        if (Date.now() - cached.timestamp < RMP_CACHE_TTL) {
+        if (Date.now() - cached.timestamp < (cached.data.error ? DAY / 12 : DAY)) {
             console.log(`RMP cache hit (memory): ${professorName}`);
             return cached.data;
         }
@@ -133,7 +150,7 @@ async function getRMPFromCache(professorName) {
         const result = await chrome.storage.local.get(cacheKey);
         if (result[cacheKey]) {
             const cached = result[cacheKey];
-            if (Date.now() - cached.timestamp < RMP_CACHE_TTL) {
+            if (Date.now() - cached.timestamp < (cached.data.error ? DAY / 12 : DAY)) {
                 console.log(`RMP cache hit (storage): ${professorName}`);
                 // Populate memory cache
                 rmpMemoryCache.set(cacheKey, cached);
@@ -150,7 +167,7 @@ async function getRMPFromCache(professorName) {
 }
 
 async function setRMPCache(professorName, data) {
-    const cacheKey = `rmp_${professorName.toLowerCase()}`;
+    const cacheKey = `rmp_v22_${professorName.toLowerCase()}`;
     const cacheEntry = { data, timestamp: Date.now() };
 
     // Set in memory cache
@@ -167,179 +184,68 @@ async function setRMPCache(professorName, data) {
 
 
 
-const searchProfessor = async (name, schoolID) => {
-	console.log('Searching for professor:', name);
-	try {
-		const response = await fetch(`https://www.ratemyprofessors.com/graphql`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Basic ${AUTH_TOKEN}`,
-			},
-			body: JSON.stringify({
-				query: `query NewSearchTeachersQuery($text: String!, $schoolID: ID!) {
-              newSearch {
-                teachers(query: {text: $text, schoolID: $schoolID}) {
-                  edges {
-                    cursor
-                    node {
-                      id
-                      firstName
-                      lastName
-                      school {
-                        name
-                        id
-                      }
-                    }
-                  }
-                }
-              }
-            }`,
-				variables: {
-					text: name,
-					schoolID,
-				},
-			}),
-		});
-		const text = await response.text();
-		let json;
-		try {
-			json = JSON.parse(text);
-			// console.log('json response for ' + name + ' at ' + schoolID, json);
-		} catch (error) {
-			console.error('Error parsing JSON:', error);
-			throw new Error('Error parsing JSON: ' + text);
-		}
-		if (json.data.newSearch.teachers === null) {
-			// console.log('No results found for professor:', name);
-			return [];
-		}
-
-		return json.data.newSearch.teachers.edges.map((edge) => edge.node);
-	} catch (error) {
-		console.error('Error searching for professor:', error);
-		throw error;
-	}
-};
-
-const getProfessor = async (id) => {
-	// console.log('Fetching professor data for ID:', id);
-	try {
-		const response = await fetch(`https://www.ratemyprofessors.com/graphql`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Basic ${AUTH_TOKEN}`,
-			},
-			body: JSON.stringify({
-				query: `query TeacherRatingsPageQuery($id: ID!) {
-              node(id: $id) {
-                ... on Teacher {
-                  id
-                  firstName
-                  lastName
-                  school {
-                    name
-                    id
-                    city
-                    state
-                  }
-                  avgDifficulty
-                  avgRating
-                  department
-                  numRatings
-                  legacyId
-                  wouldTakeAgainPercent
-                }
-                id
-              }
-            }`,
-				variables: {
-					id,
-				},
-			}),
-		});
-		const json = await response.json();
-		// console.log('Professor data by ID: ' + id, json.data.node);
-		return json.data.node;
-	} catch (error) {
-		console.error('Error fetching professor data:', error);
-		throw error;
-	}
-};
-
-async function sendProfessorInfo(professorName) {
-    // Check if professorName is a valid string before normalizing
-    if (typeof professorName !== 'string') {
-        return { error: 'Invalid professor name provided.' };
-    }
-
-    const normalizedName = professorName.normalize('NFKD');
-
-    // Check cache first
-    const cached = await getRMPFromCache(normalizedName);
-    if (cached) {
-        return cached;
-    }
-
-    try {
-        let professorID;
-        for (let i = 0; i < SCHOOL_ID.length; i++) {
-            const professors = await searchProfessor(normalizedName, SCHOOL_ID[i]);
-            if (professors.length === 0) {
-                continue;
-            }
-            professorID = professors[0].id;
-            console.log('SUCCESS! ' + professorName + ' professorID: ' + professorID + ' found at schoolID: ' + SCHOOL_ID[i]);
-            break;
-        }
-        if (professorID === undefined) {
-            console.log('No ' + professorName + ' found for any schoolID:', SCHOOL_ID);
-            const errorResult = { error: professorName + ' not found on RMP for any given SCHOOL_ID' };
-            // Cache "not found" results too to avoid repeated lookups
-            await setRMPCache(normalizedName, errorResult);
-            return errorResult;
-        }
-        const professor = await getProfessor(professorID);
-        console.log(professor);
-
-        // Cache the successful result
-        await setRMPCache(normalizedName, professor);
-
-        return professor;
-    } catch (error) {
-        console.error('Error sending professor info for ' + professorName, error);
-        throw error;
-    }
+async function rmpQuery(query, variables) {
+    const response = await fetch('https://www.ratemyprofessors.com/graphql', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', Authorization: 'Basic ' + AUTH_TOKEN},
+        body: JSON.stringify({query, variables})
+    });
+    if (!response.ok) throw new Error('Rating service unavailable');
+    const result = await response.json();
+    if (result.errors?.length || !result.data) throw new Error('Rating service unavailable');
+    return result.data;
 }
 
-// Single consolidated listener for all content script requests
-chrome.runtime.onConnect.addListener((port) => {
-	port.onMessage.addListener(async (request) => {
-		// Handle grade distribution requests
-		if (request.type === 'gradeDistribution') {
-			const { firstName, lastName } = request.professor;
+async function fetchRating(name) {
+    const cached = await getRMPFromCache(name);
+    if (cached) return cached;
+    const search = await rmpQuery(`query($text:String!,$schoolID:ID!){
+        newSearch { teachers(query:{text:$text,schoolID:$schoolID}){
+            edges { node { id firstName lastName school { id } } }
+        } }
+    }`, {text: name, schoolID: CLEMSON_ID});
+    const canonical = normalizeName(name);
+    const candidates = (search.newSearch?.teachers?.edges || []).map(edge => edge.node).filter(n => n.school?.id === CLEMSON_ID);
+    const exact = candidates.filter(n => normalizeName(n.firstName+' '+n.lastName) === canonical);
+    const matches = exact.length ? exact : candidates.filter(n => {
+        const family = normalizeName(n.lastName);
+        const given = canonical.slice(0, -(family.length + 1));
+        return family && canonical.endsWith(' '+family) && given.split(' ')[0] === normalizeName(n.firstName).split(' ')[0];
+    });
+    let result = {error:'No unique matching Clemson profile'};
+    if (matches.length === 1) {
+        const detail = await rmpQuery(`query($id:ID!){node(id:$id){... on Teacher {
+            id firstName lastName school { id } avgDifficulty avgRating numRatings legacyId wouldTakeAgainPercent
+        }}}`, {id:matches[0].id});
+        if (!detail.node || detail.node.school?.id !== CLEMSON_ID) throw new Error('Rating service unavailable');
+        result = {...detail.node, checkedAt:Date.now()};
+    }
+    await setRMPCache(name,result);
+    return result;
+}
 
-			// Check for valid firstName and lastName
-			if (!firstName || !lastName) {
-				console.warn("Invalid professor name received. First or last name is missing:", request.professor);
-				port.postMessage({ type: 'gradeDistribution', data: [] });
-				return;
-			}
+function sendProfessorInfo(name) {
+    const key = normalizeName(name);
+    if (!key) return Promise.resolve({error:'Missing instructor name'});
+    if (!pendingRatings.has(key)) {
+        pendingRatings.set(key,fetchRating(name).finally(() => pendingRatings.delete(key)));
+    }
+    return pendingRatings.get(key);
+}
 
-			const results = await searchGradeDistributions(firstName, lastName);
-			port.postMessage({ type: 'gradeDistribution', data: results });
-		}
-		// Handle professor rating requests
-		else if (request.professorName) {
-			sendProfessorInfo(request.professorName)
-				.then((professor) => {
-					port.postMessage(professor);
-				})
-				.catch((error) => {
-					console.error('Error:', error);
-					port.postMessage({ error });
-				});
-		}
-	});
+chrome.runtime.onConnect.addListener(port => {
+    let connected = true;
+    port.onDisconnect.addListener(() => { connected = false; });
+    port.onMessage.addListener(async request => {
+        let result;
+        try {
+            result = request.type === 'gradeDistribution'
+                ? {type:'gradeDistribution', data:await searchGradeDistributions(request.professor || {})}
+                : await sendProfessorInfo(request.professorName);
+        } catch {
+            result = request.type === 'gradeDistribution' ? {type:'gradeDistribution',data:[],error:'Grade history unavailable'}
+                : {error:'Rating service unavailable'};
+        }
+        if (connected) port.postMessage(result);
+    });
 });

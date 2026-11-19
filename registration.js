@@ -91,7 +91,9 @@
     }
 
     function buildShell() {
-        const filterGroupsHTML = FILTERS.map(buildFilterGroupHTML).join('');
+        const primaryKeys = ['txt_subject','txt_courseNumber','txt_courseTitle','txt_instructor'];
+        const filterGroupsHTML = primaryKeys.map(key => buildFilterGroupHTML(FILTERS.find(f => f.key === key))).join('');
+        const advanced = FILTERS.filter(f => !primaryKeys.includes(f.key)).map(buildFilterGroupHTML).join('');
 
         const app = document.createElement('div');
         app.className = 'irp-app';
@@ -105,6 +107,7 @@
                             <line x1="3" y1="12" x2="21" y2="12"/>
                             <line x1="3" y1="18" x2="21" y2="18"/>
                         </svg>
+                        <span>Filters</span>
                     </button>
                     <a href="https://sadv.sis.clemson.edu/StudentSelfService/ssb/studentCommonDashboard" class="irp-brand">IRoar <span class="irp-brand-premium">Premium</span></a>
                 </div>
@@ -125,6 +128,7 @@
                     </div>
                     <div class="irp-sidebar-filters">
                         ${filterGroupsHTML}
+                        <details class="irp-more"><summary>More filters</summary>${advanced}</details>
                     </div>
                     <div class="irp-sidebar-footer">
                         <button type="button" class="irp-search-button">Search</button>
@@ -133,12 +137,15 @@
                 <main class="irp-main">
                     <header class="irp-intro"><div><p>Course planning</p><h1>Browse classes</h1></div>
                         <button type="button" class="irp-native">Use Banner view</button></header>
+                    <form class="irp-lookup" role="search"><label for="irp-query">Find a class</label>
+                        <div><input id="irp-query" type="search" placeholder="Course code, title, or CRN" autocomplete="off">
+                        <button type="submit">Find classes</button></div></form>
                     <div class="irp-active-filters"></div>
                     <div class="irp-sort-controls" hidden><label>Sort sections <select class="irp-sort-by">
                         ${Object.entries(sortOptions).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('')}
                         </select></label><button class="irp-sort-order" type="button">Ascending</button></div>
                     <div class="irp-results-container">
-                        <div class="irp-empty-state"><strong>Find a section</strong><span>Choose filters or search to see all classes for this term.</span></div>
+                        <div class="irp-empty-state"><strong>Explore this term</strong><span>Try a course code like CPSC 1010, or browse every section.</span><button type="button" class="irp-browse-all">Browse all classes</button></div>
                     </div>
                     <nav class="irp-pagination"></nav>
                 </main>
@@ -211,6 +218,7 @@
     }
 
     function clearFilter(key) {
+        document.getElementById('irp-query').value = '';
         delete activeFilters[key];
 
         const filterConfig = FILTERS.find(function (filter) { return filter.key === key; });
@@ -239,6 +247,7 @@
 
     function clearAllFilters() {
         activeFilters = {};
+        document.getElementById('irp-query').value = '';
 
         for (const filter of FILTERS) {
             if (filter.type === 'range') {
@@ -340,9 +349,9 @@
     function renderSeats(section) {
         const enrolled = section.enrollment || 0;
         const max = section.maximumEnrollment || 0;
-        const remaining = max - enrolled;
+        const remaining = section.seatsAvailable ?? (max - enrolled);
         const colorClass = remaining > 5 ? 'irp-good' : remaining > 0 ? 'irp-medium' : 'irp-poor';
-        return '<span class="' + colorClass + '">' + enrolled + '/' + max + '</span>';
+        return '<span class="' + colorClass + '">' + (remaining > 0 ? escapeHTML(remaining) + ' open' : 'Full') + '</span><small>' + escapeHTML(enrolled) + '/' + escapeHTML(max) + ' enrolled</small>';
     }
 
     function renderAddButton(section) {
@@ -490,8 +499,12 @@
         });
     }
 
+    function courseGrades(normalizedName, section) {
+        return (gradeDataMap.get(normalizedName) || []).filter(entry =>
+            entry.data[0] === section?.subject && entry.data[1] === String(section.courseNumber));
+    }
+
     function updateGradeCells(normalizedName) {
-        const gradeData = gradeDataMap.get(normalizedName);
         const rows = document.querySelectorAll('.irp-table tbody tr[data-crn]');
 
         for (let i = 0; i < rows.length; i++) {
@@ -501,6 +514,8 @@
             const rowNormalized = normalizeProfessorName(profElement.dataset.name).toLowerCase();
             if (rowNormalized !== normalizedName) continue;
 
+            const section = currentSearchResults.find(s => s.courseReferenceNumber === rows[i].dataset.crn);
+            const gradeData = courseGrades(normalizedName, section);
             const cell = rows[i].querySelector('[data-metric="grades"]');
             if (!gradeData || gradeData.length === 0) {
                 cell.innerHTML = '<span class="irp-text-muted">N/A</span>';
@@ -549,11 +564,11 @@
             }
 
             const name = normalizeProfessorName(displayName);
-            const nameParts = name.split(' ');
+            const nameParts = name.split(/\s+/);
             if (nameParts.length < 2) return;
 
             const port = chrome.runtime.connect({ name: 'grade-distribution' });
-            port.postMessage({ type: 'gradeDistribution', professor: { firstName: nameParts[0], lastName: nameParts[nameParts.length - 1] } });
+            port.postMessage({ type: 'gradeDistribution', professor: { displayName, firstName: nameParts[0], lastName: nameParts[nameParts.length - 1] } });
             port.onMessage.addListener(function (response) {
                 if (response.type === 'gradeDistribution') {
                     gradeDataMap.set(normalized, response.data);
@@ -598,8 +613,8 @@
                 valA = (dataA && !dataA.error) ? dataA.wouldTakeAgainPercent : -1;
                 valB = (dataB && !dataB.error) ? dataB.wouldTakeAgainPercent : -1;
             } else if (key === 'grades') {
-                const gradeA = gradeDataMap.get(nameA);
-                const gradeB = gradeDataMap.get(nameB);
+                const gradeA = courseGrades(nameA, a);
+                const gradeB = courseGrades(nameB, b);
                 valA = computeAverageA(gradeA);
                 valB = computeAverageA(gradeB);
             }
@@ -716,23 +731,23 @@
         if (!faculty) return;
 
         const normalized = normalizeProfessorName(faculty.displayName).toLowerCase();
-        const gradeData = gradeDataMap.get(normalized);
+        const gradeData = courseGrades(normalized, section);
 
         if (!gradeData || gradeData.length === 0) {
-            container.insertAdjacentHTML('beforeend', '<div class="irp-detail-section"><h4>Grade Distribution</h4><p class="irp-text-muted">No grade data available</p></div>');
+            container.insertAdjacentHTML('beforeend', '<div class="irp-detail-section"><h4>Grade Distribution</h4><p class="irp-text-muted">No published grade history for this course and instructor.</p></div>');
             return;
         }
 
-        let optionsHTML = '<option value="all">All Semesters (Average)</option>';
+        let optionsHTML = '<option value="all">All reported sections (average)</option>';
         for (let i = 0; i < gradeData.length; i++) {
-            optionsHTML += '<option value="' + i + '">' + escapeHTML(gradeData[i].semester) + ' ' + escapeHTML(gradeData[i].year) + ' — ' + escapeHTML(gradeData[i].data[0]) + ' ' + escapeHTML(gradeData[i].data[1]) + '</option>';
+            optionsHTML += '<option value="' + i + '">' + escapeHTML(gradeData[i].semester) + ' ' + escapeHTML(gradeData[i].year) + ' — ' + escapeHTML(gradeData[i].data[0]) + ' ' + escapeHTML(gradeData[i].data[1]) + ' · ' + escapeHTML(gradeData[i].data[2]) + '</option>';
         }
 
         const chartId = 'irp-grade-chart-' + section.courseReferenceNumber;
         container.insertAdjacentHTML('beforeend',
             '<div class="irp-detail-section">'
-            + '<h4>Grade Distribution</h4>'
-            + '<select class="irp-semester-select" data-chart-id="' + chartId + '">' + optionsHTML + '</select>'
+            + '<h4>Grade distribution</h4><p>Clemson reports through Spring 2026</p>'
+            + '<select aria-label="Grade report section" class="irp-semester-select" data-chart-id="' + chartId + '">' + optionsHTML + '</select>'
             + '<div id="' + chartId + '" class="irp-grade-chart"></div>'
             + '</div>'
         );
@@ -771,6 +786,7 @@
             + '<div class="irp-rmp-stat"><span class="irp-rmp-value irp-' + getDifficultyColor(teacher.avgDifficulty) + '">' + escapeHTML(teacher.avgDifficulty) + '</span><span class="irp-rmp-label">Difficulty</span></div>'
             + '<div class="irp-rmp-stat"><span class="irp-rmp-value irp-' + getWTAColor(teacher.wouldTakeAgainPercent) + '">' + (teacher.wouldTakeAgainPercent >= 0 ? Math.round(teacher.wouldTakeAgainPercent) + '%' : 'N/A') + '</span><span class="irp-rmp-label">Would Take Again</span></div>'
             + '</div>'
+            + (teacher.checkedAt ? '<p class="irp-rating-date">Checked '+escapeHTML(new Date(teacher.checkedAt).toLocaleDateString())+'</p>' : '')
             + '<a href="https://www.ratemyprofessors.com/professor?tid=' + escapeHTML(teacher.legacyId) + '" target="_blank" rel="noopener noreferrer" class="irp-rmp-link">View on RMP (' + escapeHTML(teacher.numRatings) + ' ratings)</a>'
             + '</div>';
     }
@@ -1084,6 +1100,29 @@
     }
 
     function bindEvents() {
+        const lookup = document.querySelector('.irp-lookup');
+        lookup.addEventListener('submit', e => {
+            e.preventDefault();
+            const query = lookup.querySelector('input').value.trim();
+            const code = /^([a-z]{2,5})[ -]*(\d{4}[a-z]?)$/i.exec(query);
+            const updates = code ? {txt_subject:code[1].toUpperCase(),txt_courseNumber:code[2].toUpperCase()}
+                : /^\d{5}$/.test(query) ? {txt_crn:query}
+                : /^\d{4}$/.test(query) ? {txt_courseNumber:query}
+                : query ? {txt_courseTitle:query} : {};
+            for (const key of ['txt_subject','txt_courseNumber','txt_courseTitle','txt_crn']) {
+                const value = updates[key];
+                document.getElementById('irp-'+key).value = value || '';
+                if (value) activeFilters[key] = {code:value,label:value};
+                else delete activeFilters[key];
+            }
+            renderActiveFilterChips();
+            executeSearch();
+        });
+        document.querySelector('.irp-browse-all').addEventListener('click', () => {
+            clearAllFilters();
+            executeSearch();
+        });
+
         document.querySelector('.irp-sort-by').addEventListener('change', e=>chooseSort(e.target.value));
         document.querySelector('.irp-sort-order').addEventListener('click', ()=>chooseSort(sortColumn));
         const debouncedAutocomplete = debounce(function (input) {
@@ -1111,6 +1150,7 @@
         if (sidebar) {
             sidebar.addEventListener('input', function (event) {
                 const input = event.target;
+                document.getElementById('irp-query').value = '';
 
                 if (input.dataset.endpoint) {
                     delete activeFilters[input.dataset.key];

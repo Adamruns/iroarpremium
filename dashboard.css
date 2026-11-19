@@ -26,3 +26,17 @@
     .iroar-card-grid { grid-template-columns: 1fr; gap: 12px; }
     .iroar-hero label { flex-basis: 100%; }
 }
+.iroar-hero { align-items:center; background: linear-gradient(115deg,#2c1c39 0%,#442854 72%,#58345b); }
+.iroar-hero::after { inset:-90% -10% -95% 67%; opacity:.4; }
+.iroar-hero label {flex-basis: min(390px,100%);}
+.iroar-shortcuts {display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr)); gap:10px; margin:16px 0 26px;}
+.iroar-shortcuts:empty {display:none;}
+.iroar-shortcuts a {display:flex; gap:12px; align-items:center; padding:15px; border-radius:12px; background:#fff; border:1px solid #dad2e0; color:#382540!important; text-decoration:none; box-shadow:0 2px 5px #29193108;}
+.iroar-shortcuts a:hover {background:#fcf8f4; border-color:#bb835f;}
+.iroar-shortcuts span {display:grid;place-items:center; width:36px; height:36px; border-radius:9px; font-size:21px; color:#783b10; background:#fff0e4;}
+.iroar-shortcuts strong {font-size:16px; line-height:1.35;} .iroar-shortcuts small {display:block; font-weight:400;color:#675c6e; font-size:13px;}
+.iroar-tools {display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:16px;}
+.iroar-tools h2 {font-size:22px;margin:0;color:#34263c;} .iroar-tools label {color:#514557;font-size:14px;}
+.iroar-tools select {margin-left:6px;max-width:100%;font:inherit; min-height:38px; padding:6px; background:white;border:1px solid #cfc5d3;border-radius:8px;color:#382540;}
+.iroar-service-card h2 {background:#fcfafc;border-bottom:1px solid #e6dfe9;border-left:4px solid #c47747;}
+@media(max-width:600px){.iroar-shortcuts{gap:6px;margin:10px 0 16px}.iroar-shortcuts a{padding:10px 12px}.iroar-tools label{display:grid;gap:3px}.iroar-tools select{margin:0}.iroar-hero label{flex-basis:100%}}

@@ -94,7 +94,11 @@ async function run(width) {
         assert.equal(await page.locator('.iroar-service-card a').count(),14);
         await noOverflow();
         if (!narrow) await shot('directory',page.locator('.iroar-dashboard'));
+        await page.locator('.iroar-tools select').selectOption({label:'Student Records'});
+        assert.equal(await page.locator('.iroar-service-card:visible').count(),1);
+        await page.locator('.iroar-tools select').selectOption('');
         await page.getByRole('searchbox').fill('grade');
+        if (!narrow) await shot('directory-filter',page.locator('.iroar-dashboard'));
         assert.equal(await page.locator('.iroar-service-card li:visible').count(),1);
         await page.getByRole('searchbox').fill('no-such-service');
         assert.match(await page.getByRole('status').innerText(),/No services found/);
@@ -111,6 +115,11 @@ async function run(width) {
         await page.locator('dialog').waitFor({state:'detached'});
 
         await open(base+'classSearch/classSearch');
+        await page.locator('#irp-query').fill('BIOL 1010');
+        await page.getByRole('button',{name:'Find classes'}).click();
+        await page.locator('tr[data-crn]').first().waitFor();
+        assert.equal(await page.locator('#irp-txt_subject').inputValue(),'BIOL');
+        assert.equal(await page.locator('#irp-txt_courseNumber').inputValue(),'1010');
         const filters = page.getByRole('button',{name:'Toggle filters'});
         async function showFilters(){if(narrow) await filters.click();}
         const search = page.getByRole('button',{name:'Search',exact:true});
@@ -137,7 +146,11 @@ async function run(width) {
             await page.locator('tr[data-crn="'+courses[index].courseReferenceNumber+'"] .irp-btn-add').click();
             assert(await close.evaluate(node=>node===document.activeElement));
         }
-        for (const i of [0,1,3,4]) { await add(i); await close.click(); }
+        for (const i of [0,1,3,4]) {
+            await add(i);
+            if (!narrow && i !== 4) await shot('week-'+i,page.locator('.irp-drawer'));
+            await close.click();
+        }
         await page.getByRole('button',{name:'My schedule'}).click();
         assert.equal(await page.locator('.irp-block').count(),8);
         assert.match(await page.locator('.irp-cart-credits').innerText(),/13 credits/);
