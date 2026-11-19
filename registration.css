@@ -144,3 +144,21 @@ body.irp-active > :not(.irp-app) { display: none !important; }
 .irp-rating-date {font-size:13px;color:var(--muted);}
 @media(max-width:550px){.irp-topbar{gap:6px}.irp-topbar-left{gap:5px}.irp-menu-toggle svg{width:15px}.irp-topbar .irp-brand{font-size:15px}.irp-lookup input{font-size:16px}.irp-table tr[data-crn] td:is([data-label="Difficulty"],[data-label="Take again"]){display:none}.irp-table tr[data-crn]{border-left:3px solid #e6d9ed}.irp-lookup button{font-size:14px}.irp-term-display{font-size:12px}}
 @media(max-width:375px){.irp-topbar .irp-brand{display:none}.irp-lookup div{flex-wrap:wrap}.irp-lookup input{flex-basis:100%}}
+
+.irp-site-nav { position: relative; }
+.irp-site-nav summary {
+    display: flex; align-items: center; justify-content: center; gap: 5px; min-height: 44px;
+    padding: 4px 10px; border: 1px solid #796584; border-radius: 7px; color: white; cursor: pointer;
+}
+.irp-site-nav summary::after { content: "▾"; font-size: 12px; }
+.irp-site-nav[open] summary::after { transform: rotate(180deg); }
+.irp-site-nav nav {
+    position: absolute; top: calc(100% + 3px); left: 0; z-index: 7; width: min(18rem, calc(100vw - 24px));
+    max-height: calc(100dvh - 64px); overflow: auto; border: 1px solid #cfc6d5; border-radius: 9px;
+    background: #fff; box-shadow: 0 8px 24px #30213730;
+}
+@media (max-width: 600px) {
+    .irp-topbar .irp-brand { display: none; }
+    .irp-topbar-left { gap: 5px; }
+    .irp-site-nav summary { padding-inline: 7px; font-size: 14px; }
+}

@@ -101,6 +101,7 @@
         app.innerHTML = `
             <header class="irp-topbar">
                 <div class="irp-topbar-left">
+                    <details class="irp-site-nav"><summary>Menu</summary><nav aria-label="iROAR navigation"></nav></details>
                     <button type="button" class="irp-menu-toggle" aria-expanded="false" aria-controls="irp-filters" aria-label="Toggle filters">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                             <line x1="3" y1="6" x2="21" y2="6"/>
@@ -163,6 +164,7 @@
             <div class="irp-drawer-overlay irp-hidden"></div>
         `;
 
+        app.querySelector('.irp-site-nav nav').append(createIroarNavigationLinks());
         document.body.appendChild(app);
     }
 
@@ -973,10 +975,13 @@
         }
     }
 
+    let autocompleteSequence = 0;
     function closeAllDropdowns() {
+        ++autocompleteSequence;
         const dropdowns = document.querySelectorAll('.irp-autocomplete-dropdown');
 
         for (const dropdown of dropdowns) {
+            dropdown.parentElement.removeAttribute('aria-busy');
             dropdown.classList.add('irp-hidden');
             dropdown.innerHTML = '';
         }
@@ -1096,10 +1101,24 @@
 
     function toggleSidebar() {
         const open = document.querySelector('.irp-sidebar').classList.toggle('irp-sidebar-open');
-        document.querySelector('.irp-menu-toggle').setAttribute('aria-expanded', String(open));
+        const toggle = document.querySelector('.irp-menu-toggle');
+        toggle.setAttribute('aria-expanded', String(open));
+        if (open) {
+            document.querySelector('.irp-site-nav').open = false;
+            document.querySelector('.irp-sidebar-filters input').focus();
+        } else if (document.activeElement.closest('.irp-sidebar')) {
+            toggle.focus();
+        }
     }
 
     function bindEvents() {
+        const siteNav = document.querySelector('.irp-site-nav');
+        siteNav.addEventListener('toggle', () => {
+            if (siteNav.open && document.querySelector('.irp-sidebar-open')) toggleSidebar();
+        });
+        siteNav.addEventListener('focusout', event => {
+            if (event.relatedTarget && !siteNav.contains(event.relatedTarget)) siteNav.open = false;
+        });
         const lookup = document.querySelector('.irp-lookup');
         lookup.addEventListener('submit', e => {
             e.preventDefault();
@@ -1116,7 +1135,7 @@
                 else delete activeFilters[key];
             }
             renderActiveFilterChips();
-            executeSearch();
+            searchFromFilters();
         });
         document.querySelector('.irp-browse-all').addEventListener('click', () => {
             clearAllFilters();
@@ -1125,7 +1144,8 @@
 
         document.querySelector('.irp-sort-by').addEventListener('change', e=>chooseSort(e.target.value));
         document.querySelector('.irp-sort-order').addEventListener('click', ()=>chooseSort(sortColumn));
-        const debouncedAutocomplete = debounce(function (input) {
+        const debouncedAutocomplete = debounce(function (input, sequence) {
+            if (sequence !== autocompleteSequence) return;
             const endpoint = input.dataset.endpoint;
             const filterKey = input.dataset.key;
             const searchTerm = input.value.trim();
@@ -1138,10 +1158,14 @@
             }
 
             fetchAutocomplete(endpoint, searchTerm).then(function (results) {
-                if (input.value.trim() === searchTerm) showAutocompleteResults(dropdown, results, filterKey);
+                if (sequence === autocompleteSequence && input === document.activeElement && input.value.trim() === searchTerm) {
+                    showAutocompleteResults(dropdown, results, filterKey);
+                }
             }).catch(function (error) {
                 console.warn('[IRoar Premium] Autocomplete error:', error);
-                dropdown.classList.add('irp-hidden');
+                if (sequence === autocompleteSequence) dropdown.classList.add('irp-hidden');
+            }).finally(() => {
+                if (sequence === autocompleteSequence) input.parentElement.removeAttribute('aria-busy');
             });
         }, DEBOUNCE_DELAY);
 
@@ -1155,7 +1179,11 @@
                 if (input.dataset.endpoint) {
                     delete activeFilters[input.dataset.key];
                     renderActiveFilterChips();
-                    debouncedAutocomplete(input);
+                    closeAllDropdowns();
+                    if (input.value.trim()) {
+                        input.parentElement.setAttribute('aria-busy', 'true');
+                        debouncedAutocomplete(input, autocompleteSequence);
+                    }
                     return;
                 }
 
@@ -1206,6 +1234,7 @@
                     activeFilters[filterKey] = { code: code, label: description };
                     renderActiveFilterChips();
                     closeAllDropdowns();
+                    input?.focus();
                     return;
                 }
 
@@ -1215,9 +1244,24 @@
                 }
 
                 if (event.target.closest('.irp-search-button')) {
-                    executeSearch();
+                    searchFromFilters();
                 }
             });
+        }
+
+        function searchFromFilters() {
+            const unresolved = [...sidebar.querySelectorAll('input[data-endpoint]')].find(input =>
+                input.value.trim() && !activeFilters[input.dataset.key]);
+            if (unresolved) {
+                if (matchMedia('(max-width: 820px)').matches && !sidebar.classList.contains('irp-sidebar-open')) toggleSidebar();
+                unresolved.closest('details')?.setAttribute('open', '');
+                unresolved.focus();
+                unresolved.setCustomValidity('Choose a suggestion or clear this field to search.');
+                unresolved.reportValidity();
+                unresolved.setCustomValidity('');
+                return;
+            }
+            executeSearch();
         }
 
         const activeFiltersContainer = document.querySelector('.irp-active-filters');
@@ -1303,12 +1347,40 @@
         }
 
         document.addEventListener('keydown', function (event) {
+            const wrapper = event.target.closest('.irp-autocomplete-wrapper');
+            if (wrapper) {
+                const choices = [...wrapper.querySelectorAll('.irp-autocomplete-dropdown:not(.irp-hidden) button')];
+                const index = choices.indexOf(event.target);
+                if (choices.length && ['ArrowDown', 'ArrowUp'].includes(event.key)) {
+                    event.preventDefault();
+                    const next = event.key === 'ArrowDown' ? (index + 1) % choices.length
+                        : (index <= 0 ? choices.length - 1 : index - 1);
+                    choices[next].focus();
+                    return;
+                }
+                if (event.key === 'Escape' && (choices.length || wrapper.hasAttribute('aria-busy'))) {
+                    event.preventDefault();
+                    closeAllDropdowns();
+                    wrapper.querySelector('input').focus();
+                    return;
+                }
+                if (event.key === 'Enter' && event.target.matches('input') && choices.length) {
+                    event.preventDefault();
+                    choices[0].click();
+                    return;
+                }
+            }
             if (event.key === 'Enter' && event.target.closest('.irp-sidebar input')) {
-                executeSearch();
+                event.preventDefault();
+                searchFromFilters();
                 return;
             }
-
             if (event.key === 'Escape') {
+                if (siteNav.open) {
+                    siteNav.open = false;
+                    siteNav.querySelector('summary').focus();
+                    return;
+                }
                 const drawerEl = document.querySelector('.irp-drawer');
 
                 if (drawerEl && !drawerEl.classList.contains('irp-drawer-closed')) {
@@ -1326,6 +1398,7 @@
         });
 
         document.addEventListener('click', function (event) {
+            if (!siteNav.contains(event.target)) siteNav.open = false;
             if (!event.target.closest('.irp-autocomplete-wrapper')) {
                 closeAllDropdowns();
             }
@@ -1346,12 +1419,16 @@
             app.hidden = !open;
             restore.hidden = open;
         }
-        restore.addEventListener('click', () => setPlanner(true));
+        restore.addEventListener('click', () => {
+            setPlanner(true);
+            app.querySelector('.irp-native').focus();
+        });
         app.querySelector('.irp-native').addEventListener('click', async () => {
             ++searchSequence;
             await searchQueue;
             await resetBannerSearch().catch(() => {});
             setPlanner(false);
+            restore.focus();
         });
         app.querySelector('.irp-term-display').textContent = termLabel || currentTerm;
         setPlanner(true);

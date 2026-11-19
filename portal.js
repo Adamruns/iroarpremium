@@ -8,6 +8,27 @@
     search.innerHTML = '<label for="iroar-service-query">Find a campus service</label><input id="iroar-service-query" type="search" placeholder="Search across all tabs" autocomplete="off"><p role="status"></p><ul hidden></ul>';
     tabs.before(search);
     const input = search.querySelector('input'), list = search.querySelector('ul'), status = search.querySelector('p');
+    const appMenu = document.querySelector('#app-nav #navbarSupportedContent');
+    const appToggle = document.querySelector('#app-nav [aria-controls="navbarSupportedContent"]');
+    if (appMenu && appToggle) {
+        appToggle.setAttribute('aria-label', 'Portal navigation');
+        const sections = document.createElement('div');
+        sections.className = 'iroar-portal-sections';
+        for (const tab of tabs.querySelectorAll('[data-bs-toggle="tab"]')) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.textContent = tab.textContent.trim();
+            button.addEventListener('click', () => {
+                input.value = '';
+                input.dispatchEvent(new Event('input'));
+                tab.click();
+                if (appToggle.getAttribute('aria-expanded') === 'true') appToggle.click();
+                tab.focus();
+            });
+            sections.append(button);
+        }
+        appMenu.append(sections);
+    }
     input.addEventListener('input', () => {
         const query = input.value.trim().toLowerCase();
         list.replaceChildren();

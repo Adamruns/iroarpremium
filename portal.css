@@ -25,3 +25,15 @@
 .iroar-portal-search li a { display:block; height:100%; color:#32213e; background:#fff; border-radius:8px; padding:12px; text-decoration:none; }
 .iroar-portal-search li a:hover {text-decoration:underline;}
 #page_body :is(.nav-tabs,.tab-content,.iroar-portal-search ul)[hidden] {display:none!important;}
+
+/* The portal renders a second navbar even when a role has no application menu. */
+#app-nav .iroar-portal-sections { display: none; }
+@media (max-width: 991.98px) {
+    #app-nav #navbarSupportedContent:not(:has(.navbar-nav :is(a,button,[role="menuitem"]))) .iroar-portal-sections {
+        display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 4px; padding-block: 8px;
+    }
+    .iroar-portal-sections button {
+        min-height: 44px; padding: 8px 12px; border: 0; border-radius: 5px; background: #fff;
+        color: #412456; text-align: left; font: inherit;
+    }
+}

@@ -1,5 +1,13 @@
 # iROAR Premium verification
 
+## Version 2.2.1 · November 19, 2026
+
+On Student Self-Service and Registration, the signed-in top-left Banner Menu opened an empty tree. Same-origin frames showing the native pages without the extension reproduced it on both hosts. The blank left margin of the menu icon also ignored clicks.
+
+Checked the student directory and its 21 SIS destinations in desktop and narrow Chrome windows. Twenty-one of those 22 pages used the Banner header. Their fallback menu exposed six links, including after Student Attendance Tracking finished loading its header. Followed all six links from Student Self-Service and verified the destination pages. Degree Works has its own navigation. On the portal at narrow width, the second navigation button opened all seven role-specific sections. Selecting Records & Registration cleared a service search, activated the correct tab and returned focus to it.
+
+The 1440- and 390-pixel browser checks cover keyboard opening and dismissal, asynchronous arrival of native links, portal section selection, the planner menu, filter suggestion selection, and switching between the planner and the original Banner view. The signed-in Spring 2027 planner also exposed all six destinations and restored keyboard focus after switching views.
+
 ## Version 2.2.0 · November 19, 2026
 
 A fresh pass opened all 21 SIS directory destinations, both registration term selectors, the directory and the portal at desktop and narrow window sizes. All 50 page loads completed without horizontal overflow. The table below identifies the individual destinations. Account-based eligibility and registration restrictions still apply.

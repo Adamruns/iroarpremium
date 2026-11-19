@@ -38,6 +38,18 @@ const fixture = (title,body) => '<!doctype html><html><head><title>'+title+'</ti
 const nativeDirectory = fixture('Student Self-Service','<div class="heading-txt"><p>Hello, Student</p>'+directory.map(([s,links])=>'<h2>'+s+'</h2>'+links.map((l,i)=>'<li><a href="/example/'+i+'">'+l+'</a></li>').join('')).join('')+'</div>');
 const termForm = fixture('Browse Classes','<label for="txt_term">Term: Spring 2027</label><input id="txt_term" type="hidden"><button>Search</button>');
 const nativePlan = fixture('Plan Ahead','<table><tr><td data-property="instructor"><a href="mailto:instructor@example.invalid">Reed, Avery</a></td></tr></table>');
+const hub = base+'registration';
+const portal = 'https://iroar.app.clemson.edu/dashboard/index.php';
+const emptyBannerMenu = fixture('Registration', `<div id="bannerMenuDiv">
+    <a id="bannerMenu" href="#" role="menu" aria-label="Banner Menu">Menu</a>
+    <div id="menuContainer" hidden><nav id="menu"><ul id="menuList" role="tree"></ul></nav></div></div>
+    <script>bannerMenu.onclick=e=>{e.preventDefault();const open=menuContainer.classList.toggle('show');menuContainer.hidden=!open;}</script>`);
+const portalPage = fixture('iROAR portal', `<nav id="app-nav"><button aria-controls="navbarSupportedContent"
+    aria-expanded="false" onclick="const open=this.getAttribute('aria-expanded')==='false';this.setAttribute('aria-expanded',open);this.nextElementSibling.hidden=!open">Toggle</button>
+    <div id="navbarSupportedContent" hidden><ul class="navbar-nav"></ul></div></nav>
+    <section id="page_body"><div class="nav-tabs"><button data-bs-toggle="tab">Dashboard</button>
+    <button data-bs-toggle="tab" onclick="this.classList.add('active')">Records</button></div>
+    <div class="tab-content"><div class="tab-item"><a href="/records">Records</a></div></div></section>`);
 const errors = [], unexpected = [];
 const browser = await chromium.launch();
 async function run(width) {
@@ -62,7 +74,7 @@ async function run(width) {
             }
             if (route.request().method()!=='GET') { unexpected.push(route.request().method()+' '+url.pathname); return route.abort(); }
             if (route.request().isNavigationRequest()) {
-                const html = url.href===dashboard ? nativeDirectory : url.pathname.includes('/plan/') ? nativePlan : termForm;
+                const html = url.href===hub ? emptyBannerMenu : url.href===portal ? portalPage : url.href===dashboard ? nativeDirectory : url.pathname.includes('/plan/') ? nativePlan : termForm;
                 return route.fulfill({contentType:'text/html',body:html});
             }
             if (url.pathname.endsWith('/searchResults/searchResults')) {
@@ -90,6 +102,35 @@ async function run(width) {
         }
         const narrow = width < 500;
         const noOverflow = async () => assert(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth+1));
+        await open(hub);
+        const bannerMenu = page.locator('#bannerMenu');
+        await bannerMenu.press('ArrowDown');
+        assert.equal(await bannerMenu.getAttribute('aria-expanded'),'true');
+        assert(await page.getByRole('link',{name:'iROAR portal'}).evaluate(el=>el===document.activeElement));
+        await page.keyboard.press('Escape');
+        assert.equal(await bannerMenu.getAttribute('aria-expanded'),'false');
+        await bannerMenu.press('Space');
+        const planLink = page.getByRole('link',{name:'Plan ahead'});
+        assert.equal(await planLink.getAttribute('href'),base+'term/termSelection?mode=plan');
+        // A delayed, role-specific native menu must take precedence immediately.
+        await page.locator('#menuList').evaluate(list=>{const a=document.createElement('a');a.href='/native';a.textContent='Native destination';list.append(a);});
+        await planLink.waitFor({state:'hidden'});
+        assert(await page.getByRole('link',{name:'Native destination'}).isVisible());
+        await page.locator('#menuList').evaluate(list=>list.replaceChildren());
+        await planLink.click();
+        assert.equal(page.url(),base+'term/termSelection?mode=plan');
+
+        if (narrow) {
+            await open(portal);
+            await page.getByRole('searchbox').fill('missing');
+            await page.getByRole('button',{name:'Portal navigation'}).click();
+            await page.locator('.iroar-portal-sections').getByRole('button',{name:'Records'}).click();
+            assert.equal(await page.getByRole('searchbox').inputValue(),'');
+            assert(await page.locator('.nav-tabs .active').evaluate(el=>el===document.activeElement));
+            await page.getByRole('button',{name:'Portal navigation'}).click();
+            await page.locator('#navbarSupportedContent .navbar-nav').evaluate(ul=>{const a=document.createElement('a');a.href='/native';a.textContent='Role menu';ul.append(a);});
+            assert(await page.locator('.iroar-portal-sections').isHidden());
+        }
         await open(dashboard);
         assert.equal(await page.locator('.iroar-service-card a').count(),14);
         await noOverflow();
@@ -115,6 +156,17 @@ async function run(width) {
         await page.locator('dialog').waitFor({state:'detached'});
 
         await open(base+'classSearch/classSearch');
+        const plannerMenu = page.locator('.irp-site-nav summary');
+        await plannerMenu.click();
+        const hubLink = page.getByRole('navigation',{name:'iROAR navigation'}).getByRole('link',{name:'Registration home'});
+        assert.equal(await hubLink.getAttribute('href'),hub);
+        await hubLink.focus(); await page.keyboard.press('Escape');
+        assert(await plannerMenu.evaluate(el=>el===document.activeElement));
+        assert(await hubLink.isHidden());
+        await plannerMenu.press('Enter');
+        const viewport = page.viewportSize();
+        await page.mouse.click(viewport.width - 12, viewport.height - 15);
+        assert(await hubLink.isHidden());
         await page.locator('#irp-query').fill('BIOL 1010');
         await page.getByRole('button',{name:'Find classes'}).click();
         await page.locator('tr[data-crn]').first().waitFor();
@@ -125,7 +177,16 @@ async function run(width) {
         const search = page.getByRole('button',{name:'Search',exact:true});
         await showFilters();
         await page.locator('#irp-txt_subject').fill('bi');
-        await page.getByRole('button',{name:'Biology'}).click();
+        const choice = page.getByRole('button',{name:'Biology'});
+        await choice.waitFor();
+        await page.locator('#irp-txt_subject').press('ArrowDown');
+        assert(await choice.evaluate(el=>el===document.activeElement));
+        await page.keyboard.press('Escape');
+        assert(await choice.isHidden());
+        assert(await page.locator('#irp-txt_subject').evaluate(el=>el===document.activeElement));
+        await page.locator('#irp-txt_subject').fill('bio');
+        await choice.waitFor(); await page.locator('#irp-txt_subject').press('Enter');
+        assert(await choice.isHidden());
         assert.match(await page.locator('.irp-active-filters').innerText(),/Biology/);
         await page.getByRole('button',{name:'Clear all'}).click();
         await page.locator('#irp-txt_courseTitle').fill('nothing');
@@ -167,6 +228,7 @@ async function run(width) {
         await page.locator('#txt_term + button').waitFor({state:'visible'});
         await page.getByRole('button',{name:'Open course planner'}).click();
         assert(await page.locator('.irp-app').isVisible());
+        assert(await page.getByRole('button',{name:'Use Banner view'}).evaluate(el=>el===document.activeElement));
         const edgeCases = await page.evaluate(() => {
             const section = (...meetings)=>({meetingsFaculty:meetings.map(m=>({meetingTime:m}))});
             const m = {sunday:true,beginTime:'0700',endTime:'0800',startDate:'01/01/2027',endDate:'02/01/2027'};
