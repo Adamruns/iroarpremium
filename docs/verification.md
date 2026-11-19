@@ -1,5 +1,9 @@
 # iROAR Premium verification
 
+## Version 2.3.1 · November 19, 2026
+
+Checked the tiger icon at 16, 32, 48, 96, and 128 pixels on light and dark backgrounds. The 128-pixel store icon has 16 pixels of transparent padding on each side. Verified each manifest icon against the packaged PNG, reran the desktop and phone checks, and decoded the full 72-second tour with its new logo.
+
 ## Version 2.3.0 · November 19, 2026
 
 Five page reviews covered the campus dashboard, Student Self-Service, Banner navigation and registration home, Browse Classes and its scheduler, and academic records. The following checks used the signed-in Clemson site unless identified as fixture tests.

@@ -60,8 +60,9 @@ def ease(t):
 def layout(title, caption):
     im = Image.new("RGB", (W, H), PAPER)
     draw = ImageDraw.Draw(im)
-    draw.rounded_rectangle((61, 42, 70, 68), radius=4, fill="#ba592a")
-    write(im, (83, 43), "iROAR Premium", 25, PLUM, True)
+    with Image.open(HERE.parents[1] / "icons" / "icon-32.png") as logo:
+        im.paste(logo, (61, 38), logo)
+    write(im, (104, 43), "iROAR Premium", 25, PLUM, True)
     write(im, (61, 92), title, 56, INK, True)
     draw.line((61, 812, 1539, 812), fill=LINE, width=2)
     write(im, (62, 837), caption, 29)
