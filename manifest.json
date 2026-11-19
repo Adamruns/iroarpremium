@@ -72,7 +72,8 @@
       "matches": [
         "https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/plan/*",
         "https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/classRegistration/*",
-        "https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/classSearch/classSearch*"
+        "https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/classSearch/classSearch*",
+        "https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/registrationHistory/*"
       ],
       "js": [
         "content.js"

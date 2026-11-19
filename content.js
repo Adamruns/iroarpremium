@@ -2,6 +2,8 @@
 (() => {
     const enhanced = new WeakMap();
     const gradeLabels = ['A', 'B', 'C', 'D', 'F', 'P', 'F(P)', 'W', 'I'];
+    // Older reports leave I blank, and a few imported cells hold PDF overflow such as "###".
+    const reportedGrade = /^\d+(\.\d+)?%?$/;
 
     function ask(name, message) {
         return new Promise((resolve, reject) => {
@@ -28,6 +30,10 @@
         const count = document.createElement('p');
         count.className = 'iroar-grade-count';
         count.setAttribute('role', 'status');
+        const note = document.createElement('p');
+        note.className = 'iroar-grade-note';
+        note.textContent = '— marks a grade Clemson did not report.';
+        note.hidden = reports.every(({data}) => gradeLabels.every((_, index) => reportedGrade.test(data[index + 4] ?? '')));
         const list = document.createElement('ul');
         list.className = 'iroar-grade-sections';
         list.tabIndex = 0;
@@ -40,17 +46,28 @@
                 const item = document.createElement('li');
                 const headline = document.createElement('strong');
                 headline.textContent = [term, '·', data[0], data[1], data[2]].join(' ');
+                const course = document.createElement('span');
+                course.className = 'iroar-grade-course';
+                course.textContent = data[3] || '';
                 const grades = document.createElement('dl');
                 for (const [index, letter] of gradeLabels.entries()) {
                     const group = document.createElement('div');
                     const heading = document.createElement('dt');
                     heading.textContent = letter;
                     const value = document.createElement('dd');
-                    value.textContent = data[index + 4] === '' || data[index + 4] == null ? 'unreported' : data[index + 4];
+                    if (reportedGrade.test(data[index + 4] ?? '')) {
+                        value.textContent = data[index + 4];
+                    } else {
+                        // A dash fits the narrow cells; the full word stays available to screen readers.
+                        const mark = document.createElement('span');
+                        mark.setAttribute('aria-hidden', 'true');
+                        mark.textContent = '—';
+                        value.append(mark, hiddenText('unreported'));
+                    }
                     group.append(heading, value);
                     grades.append(group);
                 }
-                item.append(headline, grades);
+                item.append(headline, course, grades);
                 sections.append(item);
             }
             const total = sections.childElementCount;
@@ -59,7 +76,7 @@
             list.scrollTop = 0;
         }
         select.addEventListener('change', render);
-        body.replaceChildren(label, count, list);
+        body.replaceChildren(label, count, note, list);
         render();
     }
 
@@ -80,6 +97,13 @@
         dialog.append(header,body);
         document.body.append(dialog);
         close.addEventListener('click', () => dialog.close());
+        // Taps on the backdrop target the dialog itself, outside its box.
+        dialog.addEventListener('click', event => {
+            const bounds = dialog.getBoundingClientRect();
+            const outside = event.clientX < bounds.left || event.clientX > bounds.right
+                || event.clientY < bounds.top || event.clientY > bounds.bottom;
+            if (event.target === dialog && outside) dialog.close();
+        });
         dialog.addEventListener('close', () => { dialog.remove(); if (button.isConnected) button.focus(); }, {once:true});
         dialog.showModal();
         const parts = professor.split(/\s+/);
@@ -88,11 +112,23 @@
             if (!dialog.open) return;
             if (result.error) throw new Error(result.error);
             renderGradeHistory(body, result.data);
-        } catch { body.textContent = 'Grade history could not be loaded.'; }
+        } catch {
+            // After the extension updates or reloads, this page's copy of the script can no longer reach it.
+            body.textContent = chrome.runtime?.id ? 'Grade history could not be loaded. Close this window and try again.'
+                : 'iROAR Premium was updated. Refresh this page to load grade history.';
+        }
+    }
+
+    function hiddenText(text) {
+        const spoken = document.createElement('span');
+        spoken.className = 'iroar-visually-hidden';
+        spoken.textContent = text;
+        return spoken;
     }
 
     function enhance() {
-        for (const link of document.querySelectorAll('td[data-property="instructor"] a[href^="mailto:"]')) {
+        // Plan Ahead and registration tables use instructor cells; View Registration's schedule details use a list view.
+        for (const link of document.querySelectorAll('td[data-property="instructor"] a[href^="mailto:"], .listViewInstructorInformation a[href^="mailto:"]')) {
             const displayName = link.textContent.trim();
             const previous = enhanced.get(link);
             if (previous && previous.name === displayName && previous.box === link.nextElementSibling) continue;
@@ -112,17 +148,18 @@
             const rating = document.createElement('a');
             rating.target = '_blank'; rating.rel = 'noopener noreferrer';
             rating.href = 'https://www.ratemyprofessors.com/search/professors/242?q='+encodeURIComponent(professor);
-            rating.textContent = 'Find on Rate My Professors';
+            // Banner's instructor column is narrow, so the visible labels stay short.
+            rating.replaceChildren('Search RMP', hiddenText(' (Rate My Professors) for '+professor));
             box.append(rating, grades);
             enhanced.set(link, {name:displayName,box});
             link.after(box);
             ask('professor-rating',{professorName:professor}).then(data => {
                 if (!box.isConnected || data.error || !data.numRatings || !data.legacyId) return;
-                rating.textContent = 'Rate My Professors · '+data.avgRating+'/5';
+                rating.replaceChildren('RMP '+data.avgRating+'/5', hiddenText(' (Rate My Professors rating) for '+professor));
                 rating.href = 'https://www.ratemyprofessors.com/professor/'+encodeURIComponent(data.legacyId);
                 const stats = document.createElement('small');
                 stats.textContent = data.numRatings+(data.numRatings===1 ? ' rating' : ' ratings')+' · Difficulty '+data.avgDifficulty+'/5'+(data.wouldTakeAgainPercent >= 0 ? ' · '+Math.round(data.wouldTakeAgainPercent)+'% would take again' : '');
-                box.append(stats);
+                rating.after(stats);
             }).catch(() => {});
         }
     }

@@ -1,9 +1,12 @@
-.iroar-prof { display: grid; justify-items: start; gap: 4px; margin: 6px 0; font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+/* Banner's instructor cells are nowrap with hidden overflow, which cut off ratings in Plan Ahead. */
+.iroar-prof { display: grid; justify-items: start; gap: 4px; margin: 6px 0; white-space: normal; font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.listViewInstructorInformation .iroar-prof { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 2px 8px; vertical-align: middle; }
 .iroar-prof a { color: #5b376b; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
 .iroar-prof button { background: #f0eaf4; border: 1px solid #d9cce0; color: #492a60; border-radius: 6px; padding: 5px 9px; font: inherit; cursor: pointer; }
 .iroar-prof small { color: #5d5264; line-height: 1.4; }
 .iroar-grade-dialog {
-    box-sizing: border-box; position: fixed; inset: 0; margin: auto; width: min(570px,94vw);
+    /* Anchored to the top so filtering by semester doesn't make the dialog jump as it re-centers. */
+    box-sizing: border-box; position: fixed; inset: 0; margin: min(7vh,60px) auto auto; width: min(570px,94vw);
     max-height: 80vh; max-height: 85dvh; padding: 0; overflow: auto; border: 1px solid #d6cedc;
     border-radius: 14px; color: #302337; background: white; box-shadow: 0 12px 50px #24142c33;
     font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -18,8 +21,11 @@
 .iroar-grade-content label[hidden] { display: none; }
 .iroar-grade-content select { padding: 5px 9px; max-width: 100%; min-height: 36px; font: inherit; }
 .iroar-grade-count { margin: 5px 0 8px; color: #615369; font-size: 13px; }
-.iroar-grade-sections { list-style: none; overflow: auto; overscroll-behavior: contain; margin: 0; padding: 0; }
+.iroar-grade-note { margin: -4px 0 8px; color: #615369; font-size: 13px; }
+.iroar-grade-sections { position: relative; list-style: none; overflow: auto; overscroll-behavior: contain; margin: 0; padding: 0; }
 .iroar-grade-sections li { padding: 10px 2px; border-top: 1px solid #e6dfe9; }
+.iroar-grade-course { display: block; color: #5d5264; font-size: 13px; overflow-wrap: anywhere; }
+.iroar-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .iroar-grade-sections dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: 5px; margin: 6px 0 0; }
 .iroar-grade-sections dl div { padding: 4px; border-radius: 4px; background: #f5f2f7; }
 .iroar-grade-sections dt { font-size: 12px; color: #66566d; }
