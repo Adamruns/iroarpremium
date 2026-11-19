@@ -13,14 +13,15 @@
     search.className = 'iroar-portal-search';
     search.innerHTML = `<div class="iroar-portal-heading">
         <h1></h1>
-        <label class="iroar-portal-field"><i class="bi bi-search" aria-hidden="true"></i>
-            <span class="visually-hidden">Find a campus service</span>
-            <input type="search" placeholder="Search all campus services" autocomplete="off">
-        </label>
+        <div class="iroar-portal-field" role="search"><i class="bi bi-search" aria-hidden="true"></i>
+            <label class="visually-hidden" for="iroar-service-query">Find a campus service</label>
+            <input id="iroar-service-query" type="search" placeholder="Search all campus services" autocomplete="off" aria-controls="iroar-service-results">
+            <button type="button" class="iroar-clear-search" aria-label="Clear search" hidden>Clear</button>
+        </div>
         </div><img class="iroar-portal-photo" alt="" hidden>`;
     tabs.before(search);
     const input = search.querySelector('input');
-    input.id = 'iroar-service-query';
+    const clearButton = search.querySelector('.iroar-clear-search');
     const heading = search.querySelector('h1');
     const photo = search.querySelector('img');
 
@@ -39,7 +40,8 @@
 
     const results = document.createElement('div');
     results.className = 'iroar-portal-results';
-    results.innerHTML = '<p role="status"></p><ul hidden></ul>';
+    results.id = 'iroar-service-results';
+    results.innerHTML = '<p role="status" aria-atomic="true"></p><ul hidden></ul>';
     panes.after(results);
     const list = results.querySelector('ul');
     const status = results.querySelector('p');
@@ -48,13 +50,20 @@
     for (const img of panes.querySelectorAll('.tab-pane > .row > .col-lg-3 > div > img:only-child')) {
         if (!img.parentElement.textContent.trim()) img.parentElement.classList.add('iroar-pane-photo');
     }
+    const panelIdFor = tab => tab?.getAttribute('aria-controls') || tab?.dataset.bsTarget?.slice(1);
+    const sectionNames = new Map(sectionTabs.map(tab => [panelIdFor(tab), tab.textContent.trim()]));
+    const menuButtons = new Map();
     function updateHeading(tab) {
         heading.textContent = tab?.textContent.trim() || 'Dashboard';
-        const panelId = tab?.getAttribute('aria-controls') || tab?.dataset.bsTarget?.slice(1);
+        const panelId = panelIdFor(tab);
         const source = panelId && document.getElementById(panelId)?.querySelector('.iroar-pane-photo img');
         photo.hidden = !source;
         if (source) photo.src = source.currentSrc || source.src;
         else photo.removeAttribute('src');
+        for (const [section, button] of menuButtons) {
+            if (section === tab) button.setAttribute('aria-current', 'true');
+            else button.removeAttribute('aria-current');
+        }
     }
     const activeTab = () => tabs.querySelector('.active') || sectionTabs[0];
     updateHeading(activeTab());
@@ -74,12 +83,34 @@
 
     function clearSearch() {
         input.value = '';
+        clearButton.hidden = true;
         list.replaceChildren();
         list.hidden = true;
         status.textContent = '';
         panes.hidden = false;
         layout.classList.remove('iroar-searching');
     }
+    function returnToSection() {
+        clearSearch();
+        updateHeading(activeTab());
+        input.focus();
+    }
+    clearButton.addEventListener('click', returnToSection);
+    input.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && input.value) {
+            event.preventDefault();
+            returnToSection();
+        } else if (event.key === 'ArrowDown' && list.firstElementChild) {
+            event.preventDefault();
+            list.querySelector('a').focus();
+        }
+    });
+    results.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            returnToSection();
+        }
+    });
     tabs.addEventListener('click', event => {
         if (event.target.closest('[data-bs-toggle="tab"]') && input.value) {
             clearSearch();
@@ -89,6 +120,13 @@
     tabs.addEventListener('shown.bs.tab', event => {
         clearSearch();
         updateHeading(event.target);
+        // The mobile tablist scrolls horizontally. Keep keyboard and menu selections in view.
+        if (!desktop.matches) {
+            const tab = event.target.getBoundingClientRect();
+            const viewport = tabs.getBoundingClientRect();
+            if (tab.left < viewport.left) tabs.scrollLeft += tab.left - viewport.left - 5;
+            else if (tab.right > viewport.right) tabs.scrollLeft += tab.right - viewport.right + 5;
+        }
     });
 
     const appMenu = document.querySelector('#app-nav #navbarSupportedContent');
@@ -101,6 +139,8 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.textContent = tab.textContent.trim();
+            menuButtons.set(tab, button);
+            if (tab === activeTab()) button.setAttribute('aria-current', 'true');
             button.addEventListener('click', () => {
                 clearSearch();
                 tab.click();
@@ -112,30 +152,46 @@
         }
         appMenu.append(sections);
     }
+    const searchText = text => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
     input.addEventListener('input', () => {
-        const query = input.value.trim().toLowerCase();
-        if (!query) {
+        if (!input.value.trim()) {
             clearSearch();
             updateHeading(activeTab());
             return;
         }
         layout.classList.add('iroar-searching');
+        clearButton.hidden = false;
         heading.textContent = 'Search results';
         panes.hidden = true;
         list.replaceChildren();
-        const seen = new Set();
+        const terms = searchText(input.value).split(' ').filter(Boolean);
+        const matches = new Map();
         for (const original of panes.querySelectorAll('.tab-item a[href]')) {
             const label = original.textContent.trim();
-            if (!label.toLowerCase().includes(query) || seen.has(original.href)) continue;
-            seen.add(original.href);
+            const section = sectionNames.get(original.closest('.tab-pane')?.id) || '';
+            const labelText = searchText(label);
+            const searchable = labelText + ' ' + searchText(section);
+            if (!terms.length || !terms.every(term => searchable.includes(term))) continue;
+            // Keep the first matching section for each destination and put direct label matches first.
+            if (!matches.has(original.href)) matches.set(original.href, {original, label, section, direct:terms.every(term => labelText.includes(term))});
+        }
+        const ranked = [...matches.values()].sort((a,b) => Number(b.direct) - Number(a.direct));
+        for (const {original,label,section} of ranked) {
             const row = document.createElement('li');
             const link = original.cloneNode(false);
             link.removeAttribute('id');
-            link.textContent = label;
+            const copy = document.createElement('span');
+            copy.textContent = label;
+            if (section) {
+                const context = document.createElement('small');
+                context.textContent = section;
+                copy.append(context);
+            }
+            link.append(copy);
             row.append(link);
             list.append(row);
         }
-        list.hidden = !seen.size;
-        status.textContent = seen.size ? seen.size+' matching '+(seen.size===1?'service':'services') : 'No matching services. Try a shorter search.';
+        list.hidden = !matches.size;
+        status.textContent = matches.size ? matches.size+' matching '+(matches.size===1?'service':'services') : 'No matching services. Try a shorter search.';
     });
 })();

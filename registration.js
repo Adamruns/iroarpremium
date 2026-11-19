@@ -142,7 +142,7 @@
                         <div><input id="irp-query" type="search" placeholder="Course code, title, or CRN" autocomplete="off">
                         <button type="submit">Find classes</button></div></form>
                     <div class="irp-active-filters"></div>
-                    <div class="irp-sort-controls" hidden><label>Sort sections <select class="irp-sort-by">
+                    <div class="irp-sort-controls" hidden><span class="irp-sort-scope" hidden>Sorting this page</span><label>Sort sections <select class="irp-sort-by">
                         ${Object.entries(sortOptions).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('')}
                         </select></label><button class="irp-sort-order" type="button">Ascending</button></div>
                     <div class="irp-results-container">
@@ -286,7 +286,7 @@
 
     function formatTime(timeString) {
         if (!timeString || timeString.length < 4) return '';
-        let hours = parseInt(timeString.substring(0, 2), 10);
+        let hours = parseInt(timeString.substring(0, 2), 10) % 24;
         const minutes = timeString.substring(2, 4);
         const period = hours >= 12 ? 'pm' : 'am';
         if (hours > 12) hours -= 12;
@@ -294,16 +294,10 @@
         return hours + ':' + minutes + period;
     }
 
-    function formatDays(meetingTime) {
-        let days = '';
-        if (meetingTime.monday) days += 'M';
-        if (meetingTime.tuesday) days += 'T';
-        if (meetingTime.wednesday) days += 'W';
-        if (meetingTime.thursday) days += 'R';
-        if (meetingTime.friday) days += 'F';
-        if (meetingTime.saturday) days += 'Sa';
-        if (meetingTime.sunday) days += 'Su';
-        return days || 'TBA';
+    function meetingSummary(meeting) {
+        const days = iroarSchedule.days.filter(day => meeting[day]).map(day => day[0].toUpperCase() + day.slice(1, 3));
+        const start = formatTime(meeting.beginTime), end = formatTime(meeting.endTime);
+        return [days.join(', '), start && end ? start + '–' + end : 'Time TBA'].filter(Boolean).join(' · ');
     }
 
     function getRatingColor(rating) {
@@ -358,8 +352,8 @@
 
     function renderAddButton(section) {
         const inCart = cartItems.some(function (item) { return item.courseReferenceNumber === section.courseReferenceNumber; });
-        if (inCart) return '<button class="irp-btn-added" data-crn="' + escapeHTML(section.courseReferenceNumber) + '" disabled>Added</button>';
-        return '<button class="irp-btn-add" data-crn="' + escapeHTML(section.courseReferenceNumber) + '">Add</button>';
+        return '<button type="button" class="' + (inCart ? 'irp-btn-added' : 'irp-btn-add') + '" data-crn="' + escapeHTML(section.courseReferenceNumber)
+            + '" aria-haspopup="dialog" aria-controls="irp-planner" title="' + (inCart ? 'View my schedule' : 'Add to my schedule') + '">' + (inCart ? 'Added' : 'Add') + '</button>';
     }
 
     function showLoadingState() {
@@ -411,8 +405,7 @@
             const e = escapeHTML;
             const title = e(section.courseTitle);
             const code = e([section.subject,section.courseNumber].join(' '));
-            const times = [...new Set((section.meetingsFaculty || []).map(({meetingTime:m}) => m && (m.beginTime
-                ? formatDays(m)+' '+formatTime(m.beginTime)+'–'+formatTime(m.endTime) : 'Time TBA')).filter(Boolean))];
+            const times = [...new Set((section.meetingsFaculty || []).map(({meetingTime:m}) => m && meetingSummary(m)).filter(Boolean))];
             const location = (section.meetingsFaculty || [])[0]?.meetingTime;
             const venue = [location?.building, location?.room].filter(Boolean).join(' ');
             const metric = (label,field) => '<td data-label="'+label+'"><span data-metric="'+field+'">'+(section.faculty?.length ? '…' : '—')+'</span></td>';
@@ -495,7 +488,8 @@
             port.onMessage.addListener(function (teacher) {
                 rmpDataMap.set(normalized, teacher);
                 updateRMPCells(normalized);
-                refreshOpenMetrics(normalized);
+                refreshOpenMetrics(normalized, 'ratings');
+                if (insightSorts.includes(sortColumn) && sortColumn !== 'grades') finishInsightSort(rmpDataMap);
                 port.disconnect();
             });
         });
@@ -567,7 +561,11 @@
 
             const name = normalizeProfessorName(displayName);
             const nameParts = name.split(/\s+/);
-            if (nameParts.length < 2) return;
+            if (nameParts.length < 2) {
+                gradeDataMap.set(normalized, []);
+                updateGradeCells(normalized);
+                return;
+            }
 
             const port = chrome.runtime.connect({ name: 'grade-distribution' });
             port.postMessage({ type: 'gradeDistribution', professor: { displayName, firstName: nameParts[0], lastName: nameParts[nameParts.length - 1] } });
@@ -575,7 +573,8 @@
                 if (response.type === 'gradeDistribution') {
                     gradeDataMap.set(normalized, response.data);
                     updateGradeCells(normalized);
-                    refreshOpenMetrics(normalized);
+                    refreshOpenMetrics(normalized, 'grades');
+                    if (sortColumn === 'grades') finishInsightSort(gradeDataMap);
                     port.disconnect();
                 }
             });
@@ -584,6 +583,7 @@
 
     function updateSortIndicators() {
         document.querySelector('.irp-sort-controls').hidden = currentSearchResults.length === 0;
+        document.querySelector('.irp-sort-scope').hidden = totalResults <= PAGE_SIZE || !insightSorts.includes(sortColumn);
         document.querySelector('.irp-sort-by').value = sortColumn;
         document.querySelector('.irp-sort-order').textContent = sortDirection === 'asc' ? 'Ascending' : 'Descending';
         const headers = document.querySelectorAll('.irp-table thead th[data-sort-key]');
@@ -597,37 +597,42 @@
         }
     }
 
-    function sortResultsClientSide(key) {
-        currentSearchResults.sort(function (a, b) {
-            const nameA = normalizeProfessorName(a.faculty && a.faculty[0] ? a.faculty[0].displayName : '').toLowerCase();
-            const nameB = normalizeProfessorName(b.faculty && b.faculty[0] ? b.faculty[0].displayName : '').toLowerCase();
-            const dataA = rmpDataMap.get(nameA);
-            const dataB = rmpDataMap.get(nameB);
-            let valA, valB;
-
-            if (key === 'rmpRating') {
-                valA = (dataA && !dataA.error) ? dataA.avgRating : -1;
-                valB = (dataB && !dataB.error) ? dataB.avgRating : -1;
-            } else if (key === 'rmpDifficulty') {
-                valA = (dataA && !dataA.error) ? dataA.avgDifficulty : 99;
-                valB = (dataB && !dataB.error) ? dataB.avgDifficulty : 99;
-            } else if (key === 'rmpWTA') {
-                valA = (dataA && !dataA.error) ? dataA.wouldTakeAgainPercent : -1;
-                valB = (dataB && !dataB.error) ? dataB.wouldTakeAgainPercent : -1;
-            } else if (key === 'grades') {
-                const gradeA = courseGrades(nameA, a);
-                const gradeB = courseGrades(nameB, b);
-                valA = computeAverageA(gradeA);
-                valB = computeAverageA(gradeB);
-            }
-
-            return sortDirection === 'asc' ? valA - valB : valB - valA;
+    function finishInsightSort(cache) {
+        const ready = currentSearchResults.every(section => {
+            const name = section.faculty?.[0]?.displayName;
+            return !name || cache.has(normalizeProfessorName(name).toLowerCase());
         });
+        if (ready) sortResultsClientSide(sortColumn);
+    }
 
-        renderResultsTable(currentSearchResults);
+    function sortResultsClientSide(key) {
+        const body = document.querySelector('.irp-table tbody');
+        if (!body) return;
+        const rows = new Map([...body.querySelectorAll('tr[data-crn]')].map(row => [
+            row.dataset.crn, [row, row.nextElementSibling?.matches('.irp-detail-row') ? row.nextElementSibling : null]
+        ]));
+        const fields = {rmpRating:'avgRating',rmpDifficulty:'avgDifficulty',rmpWTA:'wouldTakeAgainPercent'};
+        function value(section) {
+            const name = normalizeProfessorName(section.faculty?.[0]?.displayName).toLowerCase();
+            if (key === 'grades') return computeAverageA(courseGrades(name, section));
+            const teacher = rmpDataMap.get(name);
+            return teacher?.numRatings ? (teacher[fields[key]] ?? -1) : -1;
+        }
+        currentSearchResults.sort((a, b) => {
+            const aValue = value(a), bValue = value(b);
+            if (aValue < 0 || bValue < 0) return Number(aValue < 0) - Number(bValue < 0);
+            return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+        });
+        let next = body.firstElementChild;
+        for (const section of currentSearchResults) {
+            for (const row of rows.get(section.courseReferenceNumber) || []) {
+                if (!row) continue;
+                if (row === next) next = next.nextElementSibling;
+                else if (body.moveBefore) body.moveBefore(row, next);
+                else body.insertBefore(row, next);
+            }
+        }
         updateSortIndicators();
-        loadRMPDataForResults(currentSearchResults);
-        loadGradeDataForResults(currentSearchResults);
     }
 
     function chooseSort(key) {
@@ -640,22 +645,20 @@
     function fetchDetailHTML(endpoint, term, crn) {
         const url = BASE_PATH + '/searchResults/' + endpoint + '?term=' + term + '&courseReferenceNumber=' + crn;
         return fetch(url).then(function (response) {
+            if (!response.ok || response.redirected) throw new Error('Section detail unavailable');
             return response.text();
         }).then(function (html) {
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             return doc.body.textContent.trim() || null;
-        }).catch(function () {
-            return null;
         });
     }
 
     function fetchDetailJSON(endpoint, term, crn) {
         const url = BASE_PATH + '/searchResults/' + endpoint + '?term=' + term + '&courseReferenceNumber=' + crn;
         return fetch(url).then(function (response) {
+            if (!response.ok || response.redirected) throw new Error('Section detail unavailable');
             return response.json();
-        }).catch(function () {
-            return null;
         });
     }
 
@@ -666,13 +669,11 @@
             const meeting = entry.meetingTime;
             if (!meeting) return '';
 
-            const days = formatDays(meeting);
-            const time = formatTime(meeting.beginTime) + ' - ' + formatTime(meeting.endTime);
             const location = (meeting.buildingDescription || meeting.building || '') + (meeting.room ? ' ' + meeting.room : '');
             const type = meeting.meetingTypeDescription || '';
-            const dates = (meeting.startDate || '') + ' - ' + (meeting.endDate || '');
+            const dates = [meeting.startDate, meeting.endDate].filter(Boolean).join(' – ');
 
-            let line = days + ' ' + time;
+            let line = meetingSummary(meeting);
             if (location) line += ', ' + location;
             if (type) line += ' (' + type + ')';
             if (dates) line += ' | ' + dates;
@@ -789,7 +790,9 @@
             + '<div class="irp-rmp-stat"><span class="irp-rmp-value irp-' + getWTAColor(teacher.wouldTakeAgainPercent) + '">' + (teacher.wouldTakeAgainPercent >= 0 ? Math.round(teacher.wouldTakeAgainPercent) + '%' : 'N/A') + '</span><span class="irp-rmp-label">Would Take Again</span></div>'
             + '</div>'
             + (teacher.checkedAt ? '<p class="irp-rating-date">Checked '+escapeHTML(new Date(teacher.checkedAt).toLocaleDateString())+'</p>' : '')
-            + '<a href="https://www.ratemyprofessors.com/professor?tid=' + escapeHTML(teacher.legacyId) + '" target="_blank" rel="noopener noreferrer" class="irp-rmp-link">View on RMP (' + escapeHTML(teacher.numRatings) + ' ratings)</a>'
+            + (/^[1-9]\d*$/.test(teacher.legacyId)
+                ? '<a href="https://www.ratemyprofessors.com/professor/' + teacher.legacyId + '" target="_blank" rel="noopener noreferrer" class="irp-rmp-link">View on RMP (' + escapeHTML(teacher.numRatings) + ' ratings)</a>'
+                : '<p>' + escapeHTML(teacher.numRatings) + ' ratings</p>')
             + '</div>';
     }
 
@@ -820,21 +823,24 @@
         if (!isEmptyDetail(details.corequisites)) reqsHTML += '<div class="irp-detail-section"><h4>Corequisites</h4><p>' + escapeHTML(details.corequisites) + '</p></div>';
         if (!isEmptyDetail(details.restrictions)) reqsHTML += '<div class="irp-detail-section"><h4>Restrictions</h4><p>' + escapeHTML(details.restrictions) + '</p></div>';
         if (details.linkedSections) reqsHTML += '<div class="irp-detail-section"><h4>Linked Sections</h4><p style="white-space:pre-line">' + escapeHTML(details.linkedSections) + '</p></div>';
-        panel.querySelector('.irp-detail-reqs-content').innerHTML = reqsHTML || '<p class="irp-text-muted">No requirements</p>';
+        if (details.requirementsUnavailable) reqsHTML += '<p class="irp-text-muted">Some requirements could not be loaded. Check Banner before registering.</p>';
+        panel.querySelector('.irp-detail-reqs-content').innerHTML = reqsHTML || '<p class="irp-text-muted">No requirements listed</p>';
 
         const metrics = panel.querySelector('.irp-detail-rmp-content');
-        renderDetailRMPCard(section, metrics);
-        renderDetailGradeChart(section, metrics);
+        metrics.innerHTML = '<div data-detail="ratings"></div><div data-detail="grades"></div>';
+        renderDetailRMPCard(section, metrics.firstElementChild);
+        renderDetailGradeChart(section, metrics.lastElementChild);
     }
 
-    function refreshOpenMetrics(name) {
+    function refreshOpenMetrics(name, metric) {
         for (const row of document.querySelectorAll('.irp-row-expanded')) {
             const section = currentSearchResults.find(s => s.courseReferenceNumber === row.dataset.crn);
             if (normalizeProfessorName(section?.faculty?.[0]?.displayName).toLowerCase() !== name) continue;
-            const metrics = row.nextElementSibling?.querySelector('.irp-detail-rmp-content');
-            if (metrics) {
-                renderDetailRMPCard(section, metrics);
-                renderDetailGradeChart(section, metrics);
+            const box = row.nextElementSibling?.querySelector('[data-detail="' + metric + '"]');
+            if (box) {
+                box.replaceChildren();
+                if (metric === 'ratings') renderDetailRMPCard(section, box);
+                else renderDetailGradeChart(section, box);
             }
         }
     }
@@ -854,6 +860,7 @@
             fetchDetailHTML('getEnrollmentInfo', term, crn),
             fetchDetailJSON('fetchLinkedSections', term, crn),
         ]).then(function (results) {
+            if (!detailRow.isConnected) return;
             renderDetailPanel(detailRow, section, {
                 description: results[0].value,
                 prerequisites: results[1].value,
@@ -864,6 +871,7 @@
                 attributes: results[6].value,
                 enrollment: results[7].value,
                 linkedSections: formatLinkedSectionsJSON(results[8].value),
+                requirementsUnavailable: [1,2,3,8].some(index => results[index].status === 'rejected'),
             });
         });
     }
@@ -962,13 +970,11 @@
             if (!data || data.success === false || !Array.isArray(data.data)) throw new Error('Search unavailable');
             totalResults = data.totalCount ?? data.sectionsFetchedCount ?? data.data.length;
             currentSearchResults = data.data;
+            renderResultsTable(currentSearchResults);
+            updateSortIndicators();
             if (insightSorts.includes(sortColumn)) sortResultsClientSide(sortColumn);
-            else {
-                renderResultsTable(currentSearchResults);
-                updateSortIndicators();
-                loadRMPDataForResults(currentSearchResults);
-                loadGradeDataForResults(currentSearchResults);
-            }
+            loadRMPDataForResults(currentSearchResults);
+            loadGradeDataForResults(currentSearchResults);
             renderPagination();
         } catch {
             if (sequence === searchSequence) showErrorState('Banner could not load these sections. Retry or use Banner view.');
@@ -1034,28 +1040,31 @@
             if (inCart) {
                 buttons[i].className = 'irp-btn-added';
                 buttons[i].textContent = 'Added';
-                buttons[i].disabled = true;
+                buttons[i].title = 'View my schedule';
             } else {
                 buttons[i].className = 'irp-btn-add';
                 buttons[i].textContent = 'Add';
-                buttons[i].disabled = false;
+                buttons[i].title = 'Add to my schedule';
             }
         }
 
         updateCartBadge();
     }
 
-    function toggleCartDrawer(open) {
+    let drawerOpener;
+    function toggleCartDrawer(open, trigger) {
         const drawer = document.querySelector('.irp-drawer');
         if (typeof open !== 'boolean') open = drawer.inert;
+        const toggle = document.querySelector('.irp-cart-toggle');
+        if (open) drawerOpener = trigger || toggle;
         drawer.inert = !open;
         drawer.classList.toggle('irp-drawer-closed', !open);
         document.querySelector('.irp-drawer-overlay').classList.toggle('irp-hidden', !open);
         document.querySelector('.irp-topbar').inert = open;
         document.querySelector('.irp-body').inert = open;
-        const toggle = document.querySelector('.irp-cart-toggle');
         toggle.setAttribute('aria-expanded', String(open));
-        (open ? drawer.querySelector('.irp-drawer-close') : toggle).focus();
+        const returnFocus = drawerOpener?.isConnected ? drawerOpener : toggle;
+        (open ? drawer.querySelector('.irp-drawer-close') : returnFocus).focus();
     }
 
     const scheduleColors = ['#613783','#a54516','#1a6370','#58662e','#86516b','#494982'];
@@ -1086,17 +1095,19 @@
         document.querySelector('.irp-drawer-schedule').innerHTML = schedule;
         document.querySelector('.irp-cart-count').textContent = cartItems.length;
         document.querySelector('.irp-cart-credits').textContent = cartItems.reduce((sum,s)=>sum+(Number(s.creditHours ?? s.creditHourLow)||0),0)+' credits';
-        document.querySelector('.irp-drawer-courses').innerHTML = cartItems.map((s,i) =>
-            '<div class="irp-cart-card" style="border-color:'+scheduleColors[i%scheduleColors.length]+'"><div><strong>'+name(s)+'</strong><small>'+escapeHTML(s.courseTitle)+' · CRN '+escapeHTML(s.courseReferenceNumber)+'</small></div>'
-            +'<button class="irp-cart-remove" type="button" data-crn="'+escapeHTML(s.courseReferenceNumber)+'" aria-label="Remove '+name(s)+'">×</button></div>'
-        ).join('') || '<div class="irp-empty-state"><strong>Your week is open</strong><span>Add a section from the search results to preview its meeting times.</span></div>';
+        document.querySelector('.irp-drawer-courses').innerHTML = cartItems.map((s,i) => {
+            const meetings = [...new Set((s.meetingsFaculty || []).filter(entry => entry.meetingTime).map(entry => meetingSummary(entry.meetingTime)))];
+            return '<div class="irp-cart-card" style="border-color:'+scheduleColors[i%scheduleColors.length]+'"><div><strong>'+name(s)+'</strong><small>'+escapeHTML(s.courseTitle)+' · CRN '+escapeHTML(s.courseReferenceNumber)+'</small>'
+                + meetings.map(summary => '<small class="irp-card-meeting">'+escapeHTML(summary)+'</small>').join('') + '</div>'
+                + '<button class="irp-cart-remove" type="button" data-crn="'+escapeHTML(s.courseReferenceNumber)+'" aria-label="Remove '+name(s)+'">×</button></div>';
+        }).join('') || '<div class="irp-empty-state"><strong>Your week is open</strong><span>Add a section from the search results to preview its meeting times.</span></div>';
         updateAddButtons();
     }
 
-    function addToCart(section) {
+    function addToCart(section, trigger) {
         if (!cartItems.some(item=>item.courseReferenceNumber===section.courseReferenceNumber)) cartItems.push(section);
         renderCart();
-        toggleCartDrawer(true);
+        toggleCartDrawer(true, trigger);
     }
 
     function toggleSidebar() {
@@ -1298,11 +1309,16 @@
                     return;
                 }
 
+                const addedButton = event.target.closest('.irp-btn-added');
+                if (addedButton) {
+                    toggleCartDrawer(true, addedButton);
+                    return;
+                }
                 const addButton = event.target.closest('.irp-btn-add');
                 if (addButton) {
                     const crn = addButton.dataset.crn;
                     const section = currentSearchResults.find(function (s) { return s.courseReferenceNumber === crn; });
-                    if (section) addToCart(section);
+                    if (section) addToCart(section, addButton);
                     return;
                 }
 

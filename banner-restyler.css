@@ -24,39 +24,60 @@
 .iroar-banner :is(#content,#mainContent) table:not([role=presentation]) thead th { background-color: #efeaf3; color: #342442; }
 .iroar-banner .ui-dialog { border-radius: 12px; box-shadow: 0 12px 42px #31203f29; }
 .iroar-banner .ui-dialog-titlebar { background-color: #41265e; color: white; }
-.iroar-banner #landing-paths { background: var(--roar-paper) !important; padding: clamp(16px,4vw,56px) !important; box-sizing: border-box; }
-.iroar-banner #landing-paths #select-msg { height: auto; background: none; border: 0; }
-.iroar-banner #landing-paths #select-msg .title { margin: 0 auto 24px; max-width: 1120px; color: var(--roar-ink); font-size: clamp(24px,3.8vw,42px); line-height: 1.15; letter-spacing: -.035em; }
+/* The Banner landing panel has its own scroller and native links for each role. */
+.iroar-banner #landing-paths {
+    box-sizing: border-box; padding: clamp(14px, 3vw, 38px) !important;
+    background: var(--roar-paper) !important; overflow-y: auto;
+}
+.iroar-banner #landing-paths #select-msg {
+    box-sizing: border-box; width: 100%; max-width: 1120px; height: auto; margin: 0 auto 18px;
+    padding: 0 0 14px; border: 0; border-bottom: 1px solid var(--roar-line); background: transparent;
+}
+.iroar-banner #landing-paths #select-msg .title {
+    float: none; margin: 0; padding: 0; color: var(--roar-ink);
+    font-size: clamp(25px, 3vw, 37px); line-height: 1.15; font-weight: 680; letter-spacing: -.035em;
+}
 .iroar-banner #landingPathMenu {
-    max-width: 1120px; margin: 0 auto; padding: 0; display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr)); gap: 14px;
+    display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,290px),1fr)); gap: 12px;
+    max-width: 1120px; min-height: 0; align-content: start; margin: 0 auto; padding: 0;
 }
 .iroar-banner #landingPathMenu .landing-path {
-    float: none !important; display: block; box-sizing: border-box; width: auto !important; height: auto !important;
-    min-width: 0; margin: 0 !important; padding: 0; border-radius: 14px; border: 1px solid var(--roar-line); background: #fff;
+    float: none !important; display: flex; box-sizing: border-box; width: auto !important;
+    min-width: 0; height: auto !important; margin: 0 !important; padding: 0;
+    border: 1px solid var(--roar-line); border-radius: 11px; background: white;
 }
-.iroar-banner #landingPathMenu .landing-path a { display: block; padding: 22px; box-sizing: border-box; min-height: 100%; text-decoration: none; color: var(--roar-plum); }
-.iroar-banner #landingPathMenu .landing-path:hover { border-color: #b59ac4; box-shadow: 0 4px 16px #3d214912; }
-.iroar-banner #landingPathMenu .title { background-color: transparent; color: var(--roar-ink); font-size: 19px; line-height: 1.35; font-weight: 700; }
-.iroar-banner #landingPathMenu .sub-link { font-size: 15px; line-height: 1.5; color: #5e5866; font-weight: 400; }
-@media(max-width: 650px) {
-    .iroar-banner #landingPathMenu .landing-path a { padding: 16px; }
+.iroar-banner #landingPathMenu .landing-path > a {
+    display: block; box-sizing: border-box; width: 100%; height: auto; padding: 18px 16px 18px 72px;
+    background-position: 16px 18px; background-size: 40px; background-repeat: no-repeat;
+    border-radius: inherit; color: var(--roar-plum); text-decoration: none;
+}
+.iroar-banner #landingPathMenu .landing-path > a:has(.iroar-task-icon) {
+    display: grid; grid-template-columns: 40px minmax(0,1fr); grid-template-rows: auto 1fr;
+    gap: 5px 12px; align-content: start; min-height: 44px; padding: 18px 16px; background-image: none !important;
+}
+.iroar-banner #landingPathMenu .iroar-task-icon {
+    grid-row: 1 / span 2; box-sizing: border-box; width: 40px; height: 40px; padding: 9px;
+    border-radius: 9px; background: #f1eaf5; color: #603a75; fill: none;
+    stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round;
+}
+.iroar-banner #landingPathMenu .title {
+    display: block; margin: 0; padding: 0; background: transparent; color: var(--roar-ink);
+    font-size: 18px; font-weight: 680; line-height: 1.3; text-decoration: none;
+}
+.iroar-banner #landingPathMenu a:has(.iroar-task-icon) > :is(.title,div) { grid-column: 2; margin: 0; }
+.iroar-banner #landingPathMenu .sub-link { margin: 0; color: #5e5866; font-size: 15px; font-weight: 400; line-height: 1.45; }
+.iroar-banner #landingPathMenu .landing-path:is(:hover,:focus-within) { border-color: #ab8fb8; }
+.iroar-banner #landingPathMenu a:is(:hover,:focus-visible) .title { text-decoration: underline; }
+.iroar-banner #landingPathMenu .landing-path:has(#classSearchLink) { background: #392448; border-color: #392448; }
+.iroar-banner #landingPathMenu #classSearchLink .title { color: white; }
+.iroar-banner #landingPathMenu #classSearchLink .sub-link { color: #efe6f1; }
+.iroar-banner #landingPathMenu #classSearchLink .iroar-task-icon { background: #ffcfac; color: #653110; }
+@media (max-width: 650px) {
+    .iroar-banner #landingPathMenu .landing-path > a:has(.iroar-task-icon) { padding: 13px; }
     .iroar-banner #content .select2-container { max-width: 100%; }
     .iroar-banner #content .ui-tabs-nav { display: flex; flex-wrap: wrap; }
     .iroar-banner #content .form-button { min-height: 42px; }
 }
-.iroar-banner #landing-paths #select-msg {
-    max-width: 1120px; margin: 0 auto 16px; box-sizing: border-box; padding: clamp(20px,3vw,34px);
-    background: repeating-linear-gradient(118deg,transparent 0 34px,#ffffff08 35px 37px),#362344;
-    border-radius: 14px; border-left: 5px solid #ed8a49;
-}
-.iroar-banner #landing-paths #select-msg .title { float: none; margin: 0; color: white; }
-.iroar-banner #landingPathMenu { grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); }
-.iroar-banner #landingPathMenu .landing-path a {
-    padding: 20px 18px 20px 74px; background-position: 18px 20px; background-size: 42px 42px;
-    background-repeat: no-repeat; min-height: 124px; height: 100%;
-}
-.iroar-banner #landingPathMenu .title { display: block; text-decoration: none; margin-bottom: 5px; }
-.iroar-banner #landingPathMenu a:hover .title { text-decoration: underline; }
 /* Student Self-Service uses Angular section headers; Registration uses jQuery UI panels. */
 .iroar-banner #content .page-header {
     background: #f2edf5; color: #382344; border-bottom: 2px solid #d9c8df; padding-inline: clamp(14px,2vw,28px);
@@ -74,22 +95,11 @@
 @media(max-width: 650px) {
     .iroar-banner #content .page-header { padding-inline: 12px; }
     .iroar-banner #content .section-header { overflow-wrap: anywhere; }
-    .iroar-banner #landing-paths { overflow-y: auto; }
 }
-.iroar-banner #landing-paths #select-msg { background:#f8f6f9; border:none; border-bottom:1px solid #d4cbd8; border-radius:0; padding:12px 0 18px; }
-.iroar-banner #landing-paths #select-msg .title {color:#31213c; font-weight:710;}
-.iroar-banner #landingPathMenu .landing-path {overflow:hidden;box-shadow:0 3px 12px #39234809;}
-.iroar-banner #landingPathMenu .landing-path a:has(.iroar-task-icon) {background-image:none!important; display:grid;grid-template-columns:42px minmax(0,1fr);grid-template-rows:auto 1fr;gap:6px 14px;align-content:start;padding:20px 16px;min-height:120px;}
-.iroar-banner #landingPathMenu .iroar-task-icon {grid-row:1/3; box-sizing:border-box;width:42px;height:42px;padding:10px;color:#603a75; background:#f1eaf5;border-radius:10px;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;fill:none;}
-.iroar-banner #landingPathMenu .landing-path a:has(.iroar-task-icon) > :is(.title,div) {grid-column:2;margin:0;}
-.iroar-banner #landingPathMenu .landing-path:has(#classSearchLink) {background:#392448;border-color:#392448;}
-.iroar-banner #landingPathMenu #classSearchLink .title {color:white;}
-.iroar-banner #landingPathMenu #classSearchLink .sub-link {color:#efe6f1;}
-.iroar-banner #landingPathMenu #classSearchLink .iroar-task-icon {background:#ffcfac;color:#653110;}
 .iroar-banner #content .section-header {border-inline-start:3px solid #ac78bd;padding-inline-start:12px;}
 .iroar-banner #content .ui-tabs-nav li a {padding-inline:12px;line-height:1.5;}
 .iroar-banner #content .ui-tabs-nav li.ui-tabs-active a {font-weight:700;}
-@media(max-width:650px){.iroar-banner #landingPathMenu .landing-path a:has(.iroar-task-icon){min-height:80px;padding:13px;gap:4px 11px}.iroar-banner #content .ui-tabs-nav li a{padding:8px 10px}}
+@media(max-width:650px){.iroar-banner #content .ui-tabs-nav li a{padding:8px 10px}}
 
 /* Banner can return a successful menu response with an empty tree for a signed-in role. */
 #bannerMenuDiv:has(.iroar-navigation-links) > #bannerMenu {
@@ -107,4 +117,47 @@
 }
 :is(#menu.iroar-empty-menu,.irp-site-nav) .iroar-navigation-links a:is(:hover,:focus-visible,[aria-current="page"]) {
     background: #f2edf6; color: #412456;
+}
+
+/* The registration history grid assigns fixed column widths and clips long course and status text. */
+.iroar-banner #lookupScheduleTable .footable tbody > tr > td.footable-visible {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.iroar-banner #lookupScheduleTable .section-details-link {
+    color: var(--roar-plum);
+    text-decoration: underline;
+    text-underline-offset: .15em;
+}
+@media (max-width: 650px) {
+    .iroar-banner #lookupScheduleTable .footable tbody > tr > td.footable-visible {
+        padding-inline: 5px;
+    }
+    .iroar-banner #lookupScheduleTable .footable tbody > tr > td.expand.footable-visible {
+        padding-inline-start: 28px;
+    }
+}
+@media (max-width: 760px) {
+    /* Banner sizes header labels to zero at this breakpoint, putting the sort buttons over their text. */
+    .iroar-banner #lookupScheduleTable th.footable-visible:has(.title) {
+        position: relative;
+        padding: 5px 3px;
+        vertical-align: top;
+    }
+    .iroar-banner #lookupScheduleTable th.footable-visible > .title {
+        width: auto !important;
+        float: none;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: 1.3;
+    }
+    .iroar-banner #lookupScheduleTable th.footable-visible > .sort-icon {
+        float: none;
+        top: auto;
+        margin: 3px auto 0;
+    }
+    .iroar-banner #lookupScheduleTable th.footable-visible > .sort-handle {
+        position: absolute;
+        inset: 0 0 0 auto;
+    }
 }

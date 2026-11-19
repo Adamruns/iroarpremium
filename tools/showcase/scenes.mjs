@@ -69,7 +69,7 @@ const portalPage = `<!doctype html><html lang="en"><head><meta charset="utf-8"><
 const errors = [], unexpected = [];
 const browser = await chromium.launch();
 async function run(width) {
-    const ctx = await browser.newContext({viewport:{width,height:width<500?844:820},deviceScaleFactor:1});
+    const ctx = await browser.newContext({viewport:{width,height:width<500?844:820},deviceScaleFactor:capture ? 2 : 1});
     try {
         await ctx.addInitScript(() => {
             window.chrome ??= {};
@@ -78,7 +78,7 @@ async function run(width) {
                 return {onMessage:{addListener(fn){ receive=fn; }},onDisconnect:{addListener(){}},disconnect(){},
                     postMessage(){ setTimeout(()=>receive(name==='grade-distribution'
                         ? {type:'gradeDistribution',data:[{semester:'Fall',year:'2023',data:['BIOL','1010','001','Life in Motion','46%','32%','15%','5%','2%']}]}
-                        : {avgRating:4.3,avgDifficulty:2.6,numRatings:18,wouldTakeAgainPercent:84,legacyId:0}),10); }};
+                        : {avgRating:4.3,avgDifficulty:2.6,numRatings:18,wouldTakeAgainPercent:84,legacyId:999999999}),10); }};
             }};
         });
         let bannerCache;
@@ -107,6 +107,9 @@ async function run(width) {
         page.on('pageerror',error=>{errors.push(error.message);console.error(error.message);});
         async function open(url) {
             await page.goto(url);
+            if (capture && width >= 1000 && url === dashboard) {
+                await shot('directory-before', page.locator('.heading-txt'));
+            }
             for (const group of manifest.content_scripts) {
                 if (!group.matches.some(pattern=>new RegExp('^'+pattern.split('*').map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('.*')+'$').test(url))) continue;
                 for (const css of group.css||[]) await page.addStyleTag({path:path('../../'+css)});
@@ -236,7 +239,12 @@ async function run(width) {
         await page.getByRole('button',{name:'Life in Motion'}).click();
         await page.locator('.irp-grade-chart .irp-bar').first().waitFor();
         assert.equal(await page.locator('.irp-grade-chart .irp-bar').count(),5);
-        if (!narrow) await shot('detail',page.locator('.irp-detail-panel'));
+        assert.equal(await page.locator('.irp-rmp-link').getAttribute('href'),'https://www.ratemyprofessors.com/professor/999999999');
+        if (!narrow) {
+            await shot('detail',page.locator('.irp-detail-panel'));
+            await shot('rating',page.locator('.irp-rmp-card'));
+            await shot('grades',page.locator('.irp-detail-section').filter({has:page.locator('.irp-grade-chart')}));
+        }
         await page.getByRole('button',{name:'Life in Motion'}).click();
         const close = page.getByRole('button',{name:'Close schedule'});
         async function add(index) {
@@ -245,8 +253,13 @@ async function run(width) {
         }
         for (const i of [0,1,3,4]) {
             await add(i);
+            if (i === 0) {
+                assert.match(await page.locator('.irp-cart-card').innerText(), /Mon, Wed · 9:00am–10:15am/);
+                assert.match(await page.locator('.irp-cart-card').innerText(), /Fri · 10:30am–11:20am/);
+            }
             if (!narrow && i !== 4) await shot('week-'+i,page.locator('.irp-drawer'));
             await close.click();
+            assert(await page.locator('tr[data-crn="'+courses[i].courseReferenceNumber+'"] button[data-crn]').evaluate(el=>el===document.activeElement));
         }
         await page.getByRole('button',{name:'My schedule'}).click();
         assert.equal(await page.locator('.irp-block').count(),8);

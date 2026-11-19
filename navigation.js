@@ -22,20 +22,24 @@ function createIroarNavigationLinks() {
 }
 
 (() => {
+    const installed = new WeakSet();
     function install() {
         const trigger = document.querySelector('#bannerMenuDiv #bannerMenu');
         const container = document.querySelector('#bannerMenuDiv #menuContainer');
         const menu = container?.querySelector('#menu');
         const list = menu?.querySelector('#menuList');
-        if (!trigger || !list || menu.querySelector('.iroar-navigation-links')) return;
+        if (!trigger || !list || installed.has(menu)) return;
+        installed.add(menu);
         const links = createIroarNavigationLinks();
-        list.after(links);
         trigger.setAttribute('aria-controls', container.id);
         const originalRole = trigger.getAttribute('role');
         const sync = () => {
+            const currentList = menu.querySelector('#menuList');
+            if (!currentList) return;
+            if (links.previousElementSibling !== currentList) currentList.after(links);
             const expanded = container.classList.contains('show');
             trigger.setAttribute('aria-expanded', String(expanded));
-            const hasItems = !!list.querySelector('a[href], button, [role="treeitem"], li:not(:empty)');
+            const hasItems = !!currentList.querySelector('a[href], button, [role="treeitem"], li:not(:empty)');
             if (!hasItems) trigger.setAttribute('role', 'button');
             else if (originalRole) trigger.setAttribute('role', originalRole);
             else trigger.removeAttribute('role');
@@ -45,17 +49,28 @@ function createIroarNavigationLinks() {
         sync();
         const observer = new MutationObserver(sync);
         observer.observe(container, {attributes:true, attributeFilter:['class']});
-        observer.observe(list, {childList:true, subtree:true, attributes:true, attributeFilter:['role','href']});
+        observer.observe(menu, {childList:true, subtree:true, attributes:true, attributeFilter:['role','href']});
 
         // Banner owns opening, dismissal and Alt+M. Supply keyboard navigation for the fallback.
         trigger.parentElement.addEventListener('keydown', event => {
-            if (links.hidden) return;
+            if (!menu.isConnected || links.hidden) return;
             const open = container.classList.contains('show');
-            if (event.target === trigger && (event.key === ' ' || event.key === 'ArrowDown')) {
+            if (event.target === trigger && ([' ', 'ArrowDown', 'ArrowUp'].includes(event.key))) {
                 event.preventDefault();
                 event.stopPropagation();
                 if (!open || event.key === ' ') trigger.click();
                 if (event.key === 'ArrowDown') links.firstElementChild.focus();
+                if (event.key === 'ArrowUp') links.lastElementChild.focus();
+            } else if (open && event.target.parentElement === links && ['ArrowDown','ArrowUp','Home','End'].includes(event.key)) {
+                event.preventDefault();
+                event.stopPropagation();
+                const items = [...links.children];
+                let index = items.indexOf(event.target);
+                if (event.key === 'Home') index = 0;
+                if (event.key === 'End') index = items.length - 1;
+                if (event.key === 'ArrowDown') index = (index + 1) % items.length;
+                if (event.key === 'ArrowUp') index = (index + items.length - 1) % items.length;
+                items[index].focus();
             } else if (open && event.key === 'Escape') {
                 event.preventDefault();
                 event.stopPropagation();

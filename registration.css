@@ -91,6 +91,8 @@ body.irp-active > :not(.irp-app) { display: none !important; }
 .irp-planner-body { flex: 1; overflow: auto; min-height: 0; }
 .irp-drawer-courses,.irp-drawer-schedule:not(:empty),.irp-drawer-conflicts { padding: 14px 18px; }
 .irp-cart-card { display: flex; justify-content: space-between; align-items: center; gap: 6px; border-left: 4px solid; padding: 8px 12px; margin-bottom: 8px; background: #f8f6fa; border-radius: 4px; }
+.irp-cart-card .irp-card-meeting { color: var(--ink); margin-top: 3px; font-variant-numeric: tabular-nums; }
+.irp-cart-remove, .irp-drawer-close { flex: none; width: 44px; height: 44px; }
 .irp-week { display: grid; grid-template-columns: 30px repeat(var(--days),minmax(0,1fr)); }
 .irp-week > b { padding: 6px 0; text-align: center; font-size: 12px; text-transform: capitalize; }
 .irp-hour-axis small { height: 38px; display: block; font-size: 11px; color: #62596c; }
@@ -102,8 +104,7 @@ body.irp-active > :not(.irp-app) { display: none !important; }
 .irp-restore { position: fixed; bottom: 14px; right: 18px; z-index: 1000; border: 0; padding: 10px 16px; border-radius: 10px; background: #44295d; color: white; cursor: pointer; }
 @media(max-width: 1120px) {
     .irp-table,.irp-table tbody { display: block; }
-    .irp-table thead { position: absolute; clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; }
-    .irp-table thead:focus-within { position: static; clip-path: none; width: auto; height: auto; }
+    .irp-table thead { display: none; }
     .irp-table tr[data-crn] { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px 14px; border-top: 1px solid var(--line); padding: 16px; }
     .irp-table tr[data-crn]:first-child { border: 0; }
     .irp-table td { display: block; padding: 0; border: 0; overflow-wrap: anywhere; }

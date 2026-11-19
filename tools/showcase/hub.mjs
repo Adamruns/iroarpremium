@@ -5,7 +5,7 @@ import { mkdir } from 'node:fs/promises';
 const local = path => fileURLToPath(new URL(path, import.meta.url));
 const browser = await chromium.launch();
 try {
-    const page = await browser.newPage({viewport:{width:1280,height:820},deviceScaleFactor:1});
+    const page = await browser.newPage({viewport:{width:1280,height:820},deviceScaleFactor:2});
     await page.goto('https://regssb.sis.clemson.edu/StudentRegistrationSsb/ssb/registration');
     const menu = page.locator('#landing-paths');
     await page.locator('#classSearchLink .title').filter({hasText:'Browse Classes'}).waitFor();
@@ -14,5 +14,7 @@ try {
     await menu.screenshot({path:out+'hub-before.png'});
     await page.addStyleTag({path:local('../../banner-restyler.css')});
     await page.addScriptTag({path:local('../../banner-restyler.js')});
+    await page.addScriptTag({path:local('../../navigation.js')});
+    await menu.locator('.iroar-task-icon').first().waitFor();
     await menu.screenshot({path:out+'hub-after.png'});
 } finally { await browser.close(); }

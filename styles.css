@@ -1,8 +1,32 @@
-.iroar-prof { display: grid; justify-items: start; gap: 3px; margin: 5px 0; font-size: 13px; }
-.iroar-prof button { background: #f0eaf4; border: 1px solid #d9cce0; color: #492a60; border-radius: 6px; padding: 4px 7px; cursor: pointer; }
-.iroar-prof small { color: #5d5264; }
-.iroar-grade-dialog { box-sizing: border-box; position: fixed; inset: 0; margin: auto; width: min(520px,94vw); max-height: 80vh; overflow: auto; border: 1px solid #d6cedc; border-radius: 14px; padding: 22px; color: #302337; background: #fff; box-shadow: 0 12px 50px #24142c33; }
+.iroar-prof { display: grid; justify-items: start; gap: 4px; margin: 6px 0; font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+.iroar-prof a { color: #5b376b; text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.iroar-prof button { background: #f0eaf4; border: 1px solid #d9cce0; color: #492a60; border-radius: 6px; padding: 5px 9px; font: inherit; cursor: pointer; }
+.iroar-prof small { color: #5d5264; line-height: 1.4; }
+.iroar-grade-dialog {
+    box-sizing: border-box; position: fixed; inset: 0; margin: auto; width: min(570px,94vw);
+    max-height: 80vh; max-height: 85dvh; padding: 0; overflow: auto; border: 1px solid #d6cedc;
+    border-radius: 14px; color: #302337; background: white; box-shadow: 0 12px 50px #24142c33;
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.iroar-grade-dialog[open] { display: flex; flex-direction: column; }
 .iroar-grade-dialog::backdrop { background: #21152a77; }
-.iroar-grade-dialog h2 { font-size: 20px; margin: 0 0 10px; }
-.iroar-grade-dialog button { padding: 6px 13px; background: #43295b; color: white; border: none; border-radius: 7px; }
-.iroar-grade-dialog p { padding: 8px 0; border-bottom: 1px solid #e6dfe9; font-size: 14px; line-height: 1.5; }
+.iroar-grade-dialog header { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-bottom: 1px solid #e4dce8; }
+.iroar-grade-dialog h2 { margin: 0; color: inherit; font-size: 20px; line-height: 1.25; overflow-wrap: anywhere; }
+.iroar-grade-dialog button { padding: 8px 13px; border-radius: 7px; border: 0; background: #43295b; color: white; font: inherit; cursor: pointer; }
+.iroar-grade-content { display: flex; flex-direction: column; min-height: 0; padding: 12px 20px 18px; }
+.iroar-grade-content label { display: flex; align-items: center; gap: 9px; font-weight: 600; }
+.iroar-grade-content label[hidden] { display: none; }
+.iroar-grade-content select { padding: 5px 9px; max-width: 100%; min-height: 36px; font: inherit; }
+.iroar-grade-count { margin: 5px 0 8px; color: #615369; font-size: 13px; }
+.iroar-grade-sections { list-style: none; overflow: auto; overscroll-behavior: contain; margin: 0; padding: 0; }
+.iroar-grade-sections li { padding: 10px 2px; border-top: 1px solid #e6dfe9; }
+.iroar-grade-sections dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(48px, 1fr)); gap: 5px; margin: 6px 0 0; }
+.iroar-grade-sections dl div { padding: 4px; border-radius: 4px; background: #f5f2f7; }
+.iroar-grade-sections dt { font-size: 12px; color: #66566d; }
+.iroar-grade-sections dd { margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+    .iroar-grade-dialog header { padding: 12px 14px; }
+    .iroar-grade-content { padding: 10px 14px 14px; }
+    .iroar-grade-dialog button, .iroar-grade-content select { min-height: 44px; }
+    .iroar-prof :is(a,button) { min-height: 36px; display: inline-flex; align-items: center; }
+}

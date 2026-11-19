@@ -10,6 +10,15 @@
     };
     function decorateMenu(menu) {
         for (const link of menu.querySelectorAll('.landing-path a')) {
+            // Banner's click handler chooses the entry point for the current session. A real
+            // URL also lets students copy a link or open it in a separate tab.
+            if (link.getAttribute('href') === '#' && link.dataset.login?.startsWith('/')) {
+                const entry = new URL(link.dataset.login, location.origin);
+                if (entry.origin === location.origin) {
+                    link.href = entry.href;
+                    link.dataset.iroarEntry = '';
+                }
+            }
             if (!icons[link.id] || link.querySelector('.iroar-task-icon')) continue;
             const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
             svg.setAttribute('class','iroar-task-icon');
@@ -28,6 +37,10 @@
         if (menu && !menu.dataset.iroarEnhanced) {
             menu.dataset.iroarEnhanced = 'true';
             decorateMenu(menu);
+            menu.addEventListener('click', event => {
+                if ((event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)
+                    && event.target.closest?.('a[data-iroar-entry]')) event.stopPropagation();
+            });
             const observer = new MutationObserver(() => decorateMenu(menu));
             observer.observe(menu,{childList:true,subtree:true});
         }

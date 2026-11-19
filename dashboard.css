@@ -1,42 +1,83 @@
 .iroar-dashboard, .iroar-directory-toggle { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-.iroar-dashboard { width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 clamp(10px,2vw,26px) 32px; box-sizing: border-box; color: #2b2035; }
-.iroar-dashboard *, .iroar-dashboard *::before { box-sizing: border-box; }
+.iroar-dashboard {
+    width: 100%; max-width: 1180px; margin: 0 auto; padding: 0 clamp(12px,2vw,26px) 32px;
+    box-sizing: border-box; color: #302338;
+}
+.iroar-dashboard *, .iroar-dashboard *::before, .iroar-dashboard *::after { box-sizing: border-box; }
 .iroar-dashboard[hidden], .iroar-dashboard [hidden], .heading-txt[hidden] { display: none !important; }
-.iroar-directory-toggle { display: block; margin: 8px 16px 8px auto; padding: 6px; border: 0; background: transparent; color: #57366e; text-decoration: underline; cursor: pointer; }
+.iroar-directory-toggle {
+    display: block; min-height: 44px; margin: 0 16px 0 auto; padding: 6px 8px;
+    border: 0; background: transparent; color: #57366e; text-decoration: underline; cursor: pointer;
+}
+.iroar-dashboard :is(a,button,input,select):focus-visible, .iroar-directory-toggle:focus-visible {
+    outline: 3px solid #ad5618; outline-offset: 2px;
+}
 .iroar-hero {
-    position: relative; overflow: hidden; isolation: isolate; display: flex; align-items: flex-end; justify-content: space-between;
-    flex-wrap: wrap; gap: 22px; border-radius: 18px; padding: clamp(22px,4vw,46px); background: #32203f; color: #fff;
+    position: relative; overflow: hidden; isolation: isolate; display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 18px; padding: clamp(20px,3vw,32px);
+    border-radius: 14px; background: linear-gradient(115deg,#2c1c39 0%,#442854 72%,#58345b); color: #fff;
 }
-.iroar-hero::after { content: ""; position: absolute; z-index: -1; inset: -90% -12% -95% 55%; transform: rotate(27deg);
-    background: repeating-linear-gradient(90deg,transparent 0 31px,#6a4270 32px 34px); opacity: .55; }
-.iroar-hero p { margin: 0 0 9px; font-size: 14px; color: #ffbd91; font-weight: 650; }
-.iroar-hero h1 { margin: 0; color: white !important; font-size: clamp(30px,4vw,52px) !important; font-weight: 700; letter-spacing: -.055em; line-height: 1.05; }
-.iroar-hero label { display: grid; gap: 7px; color: white; font-size: 14px; font-weight: 600; flex: 0 1 280px; }
-.iroar-hero input[type=search] { box-sizing: border-box; width: 100%; height: 44px; padding: 0 14px; background: #fff; color: #2b2035; border: 0; border-radius: 8px; font: inherit; }
-.iroar-card-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; gap: 18px; }
-.iroar-search-status { margin: 14px 0; font-size: 15px; }
-.iroar-service-card { border: 1px solid #ded9e3; background: white; border-radius: 14px; overflow: hidden; }
-.iroar-service-card h2 { margin: 0; padding: 18px 20px 14px; background: #f5f1f7; color: #422b50; font-size: 19px !important; font-weight: 650; letter-spacing: -.02em; }
-.iroar-service-card ul { list-style: none; margin: 0; padding: 0 18px; }
-.iroar-service-card li { margin: 0; padding: 0; list-style: none; border-bottom: 1px solid #eeeaf0; }
-.iroar-service-card li:last-child { border: 0; }
-.iroar-service-card li a { display: block; padding: 13px 2px; color: #362a40 !important; text-decoration: none; font-size: 15px; line-height: 1.4; }
-.iroar-service-card li a:hover { color: #963f0a !important; text-decoration: underline; }
-@media(max-width: 720px) {
-    .iroar-card-grid { grid-template-columns: 1fr; gap: 12px; }
+.iroar-hero::after {
+    content: ""; position: absolute; z-index: -1; inset: -90% -10% -95% 67%; transform: rotate(27deg);
+    background: repeating-linear-gradient(90deg,transparent 0 31px,#6a4270 32px 34px); opacity: .4;
+}
+.iroar-hero p { margin: 0 0 8px; font-size: 14px; color: #ffbd91; font-weight: 650; }
+.iroar-hero h1 {
+    margin: 0; color: white !important; font-size: clamp(29px,4vw,43px) !important;
+    font-weight: 700; letter-spacing: -.045em; line-height: 1.1;
+}
+.iroar-hero label { display: grid; flex: 0 1 370px; min-width: 0; gap: 6px; margin: 0; color: white; font-size: 14px; font-weight: 600; }
+.iroar-hero input[type=search] {
+    width: 100%; min-width: 0; height: 44px; padding: 0 14px; background: white; color: #2b2035;
+    border: 0; border-radius: 7px; font: inherit;
+}
+.iroar-shortcuts { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,200px),1fr)); gap: 10px; margin: 12px 0 22px; }
+.iroar-shortcuts:empty { display: none; }
+.iroar-shortcuts a {
+    display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 1px solid #dad2e0;
+    border-radius: 9px; background: #fff; color: #382540 !important; text-decoration: none;
+}
+.iroar-shortcuts a:is(:hover,:focus-visible) { background: #fcf8f4; border-color: #bb835f; }
+.iroar-shortcuts span { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 8px; font-size: 21px; color: #783b10; background: #fff0e4; }
+.iroar-shortcuts strong { font-size: 16px; line-height: 1.35; }
+.iroar-shortcuts small { display: block; font-weight: 400; color: #675c6e; font-size: 13px; }
+.iroar-tools, .iroar-filter-feedback { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.iroar-tools { margin: 16px 0 10px; }
+.iroar-tools h2 { margin: 0; font-size: 22px; color: #34263c; }
+.iroar-tools label { display: flex; align-items: center; gap: 8px; max-width: 100%; margin: 0; color: #514557; font-size: 14px; }
+.iroar-tools select {
+    min-height: 44px; min-width: 0; max-width: 100%; padding: 6px; border: 1px solid #cfc5d3;
+    border-radius: 7px; background: white; color: #382540; font: inherit;
+}
+.iroar-filter-feedback { margin-bottom: 10px; padding: 2px 12px; background: #f4f0f6; border-radius: 7px; }
+.iroar-search-status { flex: 1 1 200px; margin: 0; color: #46364d; font-size: 15px; }
+.iroar-clear-filters { min-height: 44px; border: 0; background: transparent; color: #57366e; font: inherit; text-decoration: underline; cursor: pointer; }
+.iroar-card-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; }
+.iroar-service-card { min-width: 0; overflow: hidden; border: 1px solid #ded9e3; border-radius: 9px; background: white; }
+.iroar-service-card h3 {
+    margin: 0; padding: 12px 16px; border-bottom: 1px solid #e6dfe9; border-left: 4px solid #c47747;
+    background: #f7f4f8; color: #422b50; font-size: 18px !important; font-weight: 650; letter-spacing: -.02em;
+}
+.iroar-service-card ul {
+    display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,260px),1fr));
+    gap: 0 16px; list-style: none; margin: 0; padding: 3px 14px;
+}
+.iroar-service-card li { min-width: 0; list-style: none; margin: 0; padding: 0; border-bottom: 1px solid #eeeaf0; }
+.iroar-service-card li > a {
+    display: flex; align-items: center; height: 100%; min-height: 44px; padding: 8px 3px; color: #493451 !important;
+    font-size: 15px; line-height: 1.4; text-decoration: none; overflow-wrap: anywhere;
+}
+.iroar-service-card li a:is(:hover,:focus-visible) { color: #84390f !important; text-decoration: underline; }
+.iroar-service-card li.iroar-directory-note {
+    position: relative; grid-column: 1/-1; padding: 11px 3px; min-height: 44px; color: #625768;
+    font-size: 14px; line-height: 1.5; overflow-wrap: anywhere;
+}
+.iroar-service-card .iroar-directory-note a { display: inline; padding: 0; min-height: 0; font-size: inherit; color: #57366e !important; text-decoration: underline; }
+.iroar-directory-note a::after { content: ""; position: absolute; inset: 0; }
+@media (max-width: 620px) {
     .iroar-hero label { flex-basis: 100%; }
+    .iroar-shortcuts { gap: 6px; margin: 10px 0 16px; }
+    .iroar-shortcuts a { padding: 9px 12px; }
+    .iroar-tools label { flex-wrap: wrap; }
+    .iroar-service-card ul { grid-template-columns: 1fr; }
 }
-.iroar-hero { align-items:center; background: linear-gradient(115deg,#2c1c39 0%,#442854 72%,#58345b); }
-.iroar-hero::after { inset:-90% -10% -95% 67%; opacity:.4; }
-.iroar-hero label {flex-basis: min(390px,100%);}
-.iroar-shortcuts {display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr)); gap:10px; margin:16px 0 26px;}
-.iroar-shortcuts:empty {display:none;}
-.iroar-shortcuts a {display:flex; gap:12px; align-items:center; padding:15px; border-radius:12px; background:#fff; border:1px solid #dad2e0; color:#382540!important; text-decoration:none; box-shadow:0 2px 5px #29193108;}
-.iroar-shortcuts a:hover {background:#fcf8f4; border-color:#bb835f;}
-.iroar-shortcuts span {display:grid;place-items:center; width:36px; height:36px; border-radius:9px; font-size:21px; color:#783b10; background:#fff0e4;}
-.iroar-shortcuts strong {font-size:16px; line-height:1.35;} .iroar-shortcuts small {display:block; font-weight:400;color:#675c6e; font-size:13px;}
-.iroar-tools {display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:16px;}
-.iroar-tools h2 {font-size:22px;margin:0;color:#34263c;} .iroar-tools label {color:#514557;font-size:14px;}
-.iroar-tools select {margin-left:6px;max-width:100%;font:inherit; min-height:38px; padding:6px; background:white;border:1px solid #cfc5d3;border-radius:8px;color:#382540;}
-.iroar-service-card h2 {background:#fcfafc;border-bottom:1px solid #e6dfe9;border-left:4px solid #c47747;}
-@media(max-width:600px){.iroar-shortcuts{gap:6px;margin:10px 0 16px}.iroar-shortcuts a{padding:10px 12px}.iroar-tools label{display:grid;gap:3px}.iroar-tools select{margin:0}.iroar-hero label{flex-basis:100%}}

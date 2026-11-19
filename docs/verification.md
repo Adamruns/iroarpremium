@@ -1,5 +1,19 @@
 # iROAR Premium verification
 
+## Version 2.3.0 · November 19, 2026
+
+Five page reviews covered the campus dashboard, Student Self-Service, Banner navigation and registration home, Browse Classes and its scheduler, and academic records. The following checks used the signed-in Clemson site unless identified as fixture tests.
+
+| Page | Checks and results |
+| --- | --- |
+| Campus dashboard | Compared all 50 service entries with Clemson’s HTML and checked all seven sections at five window widths from 520 to 1728 pixels. Link labels, destinations, order, targets, section notes, and the maintenance notice matched. Search, keyboard navigation, Help, and the account menu worked. The 50 entries point to 44 unique destinations. The automated link check reached 43, including sign-in pages. The remaining destination, Off-Campus Housing, opened in regular Chrome. |
+| Student Self-Service | The directory preserved all 37 native links, including the text explaining billing and fee links. Opened all three shortcuts and followed the billing link. Multi-column and narrow layouts, category and text search, clearing filters, and keyboard focus passed. |
+| Banner navigation and registration home | All 21 SIS directory destinations loaded in narrow Chrome. Attendance and DegreeWorks verification covered page loading and width. All four repaired registration card URLs resolved and an ordinary Plan Ahead click opened the native workflow. A fixture exercised replacement of the menu by Banner and keyboard navigation around its links. |
+| Browse Classes and scheduler | A Spring 2027 search for ACCT 2010 returned 17 sections. A matched section showed an instructor profile link and 64 grade report choices including the average. Added a three-credit section to the preview, verified two meeting blocks, then removed it. Fixture tests covered delayed rating sorts, missing ratings, grade report selection, keyboard focus, lab and weekend times, midnight, duplicate adds, unavailable prerequisites, and conflict detection. |
+| Grades, transcript and registration history | The native grade term, transcript type, and Plan Ahead term selectors opened. In registration history no visible cells clipped at 390, 520, or 1240 pixels. Sort labels cleared their buttons. Sorting, expanding a row, and opening and closing section details worked. |
+
+A fresh data check loaded 75,156 published grade rows. Spring 2026 was the latest semester on Clemson’s report index. Live Rate My Professors lookups matched two Clemson instructors and returned 52 and 14 ratings. The showcase uses fictional course, grade, and instructor examples. The signed-in verification did not submit enrollments, saved plans, or academic forms.
+
 ## Version 2.2.2 · November 19, 2026
 
 On the signed-in Clemson dashboard, all seven sections passed layout checks at 1728, 1366, 1024, 820 and 520 CSS pixels. Each service label fit inside its link, the desktop sidebar and service grid stayed side by side, and the document fit the viewport width. Compared all 50 link labels, destinations, targets and ordering, plus the section notes and maintenance alert, with the HTML served by Clemson.

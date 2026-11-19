@@ -1,16 +1,16 @@
 # iROAR Premium
 
-A student-built Chrome extension for Clemson iROAR. Search the student directory, compare class sections with instructor ratings and historical grades, and preview a week of classes before opening registration.
+A student-built Chrome extension for Clemson iROAR. Search the student directory, compare class sections with Rate My Professors ratings and historical grades, and preview a week of classes before opening registration.
 
-[![Watch the 27-second iROAR Premium showcase](docs/media/showcase-poster.jpg)](https://adamruns.com/iroarpremium/)
+[![Watch the 72-second iROAR Premium showcase](docs/media/showcase-poster.jpg)](https://adamruns.com/iroarpremium/)
 
-**[Watch the 27-second before-and-after tour](https://adamruns.com/iroarpremium/)** · [Download the MP4](https://raw.githubusercontent.com/Adamruns/iroarpremium/main/docs/media/iroar-premium.mp4)
+**[Watch the 72-second before-and-after tour](https://adamruns.com/iroarpremium/)** · [Download the MP4](https://raw.githubusercontent.com/Adamruns/iroarpremium/main/docs/media/iroar-premium.mp4)
 
 ## Install
 
 Install [iROAR Premium from the Chrome Web Store](https://chromewebstore.google.com/detail/iroar-premium/kfiijlenjablmbgdbbidepbljlbjjhpf) in desktop Chrome. Open the [Clemson iROAR portal](https://iroar.app.clemson.edu/dashboard/). Sign in and connect to the campus network or VPN as required. If iROAR was already open, refresh the tab.
 
-To try the exact 2.2.2 build manually, extract the [packaged extension ZIP](https://github.com/Adamruns/iroarpremium/releases/download/v2.2.2/iroar-premium-2.2.2.zip). Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`.
+To try the exact 2.3.0 build manually, extract the [packaged extension ZIP](https://github.com/Adamruns/iroarpremium/releases/download/v2.3.0/iroar-premium-2.3.0.zip). Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`.
 
 ## Use it
 
@@ -31,7 +31,7 @@ The live review covered the portal's seven tabs, the student directory's 21 SIS 
 
 See the [page-by-page verification record](docs/verification.md).
 
-The showcase opens with the public registration menu captured before and after the extension's stylesheet runs. The directory, classes, ratings, and schedules shown afterward use fictional fixtures rendered by the extension code. Python generates the reveal, animated walkthrough and original soundtrack.
+The 72-second tour shows the campus dashboard, Student Self-Service, registration home, and Browse Classes before and after the redesign. It closes with Rate My Professors, published grade distributions, and a weekly schedule with a time conflict. Each comparison plays at normal speed with a short animated reveal. The dashboard, registration menu, and original search form use cropped Clemson screens. The sample directory, courses, ratings, grades, and schedule use fictional examples rendered by the extension. The Python renderer generates the transitions and original instrumental score. English captions are available in the player.
 
 To run the desktop and 390-pixel interaction checks from the repository root:
 

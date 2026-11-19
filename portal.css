@@ -37,6 +37,12 @@ body.iroar-portal-page {
     background: transparent; color: #302338; font: inherit; outline: none;
 }
 .iroar-portal-field input::placeholder { color: #6f6573; opacity: 1; }
+.iroar-portal-field input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.iroar-clear-search {
+    flex: none; min-height: 40px; margin: 0; padding: 0 5px; border: 0; border-radius: 4px;
+    background: transparent; color: var(--portal-accent); font: inherit; font-size: 14px; font-weight: 650;
+}
+.iroar-clear-search:hover { text-decoration: underline; }
 .iroar-portal-photo { display: none; }
 .iroar-portal-sidebar h2 { display: none; }
 .iroar-portal-sidebar .nav-tabs {
@@ -102,10 +108,19 @@ body.iroar-portal-page {
 .iroar-portal-results { display: none; }
 .iroar-searching .iroar-portal-results { display: block; }
 .iroar-portal-results p { margin: 0 0 12px; color: #5b4c63; font-weight: 600; }
+.iroar-portal-results a small {
+    display: block; margin-top: 3px; color: #695b70; font-size: 13px; font-weight: 450;
+}
 .iroar-portal-page footer.footer { position: static !important; margin-top: auto; height: auto; }
 
 #app-nav .iroar-portal-sections { display: none; }
 @media (max-width: 991.98px) {
+    .iroar-portal-sidebar .nav-tabs {
+        display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain;
+        scrollbar-width: thin; scrollbar-color: #af9cb9 transparent;
+    }
+    .iroar-portal-sidebar .nav-tabs > .nav-item { flex: 0 0 auto; }
+    .iroar-portal-sidebar .nav-tabs .nav-link { width: auto; padding-inline: 13px; white-space: nowrap; }
     .iroar-searching .iroar-portal-sidebar { display: none; }
     #app-nav #navbarSupportedContent:not(:has(.navbar-nav :is(a,button,[role="menuitem"]))) .iroar-portal-sections {
         display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 4px; padding-block: 8px;
@@ -114,7 +129,17 @@ body.iroar-portal-page {
         min-height: 44px; padding: 8px 12px; border: 0; border-radius: 5px; background: #fff;
         color: #412456; text-align: left; font: inherit;
     }
-    .iroar-portal-wordmark { display: none; }
+    .iroar-portal-sections button[aria-current=true] { background: #ede5f1; box-shadow: inset 3px 0 #754784; }
+    /* The site supplies the same home link in two mobile mastheads. Keep its native menu and a single wordmark. */
+    body.iroar-portal-branded { padding-top: 0; }
+    .iroar-portal-branded #header-bg { display: none; }
+    .iroar-portal-branded #starter-nav {
+        position: relative; padding-block: 6px; background: #302038 !important; border-bottom: 2px solid #f1874c;
+    }
+    .iroar-portal-branded #starter-nav .navbar-brand > span {
+        position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+    }
+    .iroar-portal-wordmark { display: block; width: min(174px, 45vw); height: auto; }
 }
 
 @media (min-width: 992px) {
