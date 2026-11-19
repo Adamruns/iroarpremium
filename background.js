@@ -2,6 +2,7 @@
 const AUTH_TOKEN = 'dGVzdDp0ZXN0';
 const CLEMSON_ID = 'U2Nob29sLTI0Mg==';
 const DAY = 24 * 60 * 60 * 1000;
+const RMP_CACHE_PREFIX = 'rmp_v22_';
 const rmpMemoryCache = new Map();
 const pendingRatings = new Map();
 let csvLoad = null;
@@ -35,45 +36,51 @@ const gradeDistributionFiles = [
     'grade_distributions_final/2013Fall.csv',
 ];
 
-// Parse CSV data into a usable format (handles quoted fields with commas)
+// Parse CSV data into a usable format. Quoted fields may contain commas or line breaks, files may use
+// CRLF endings or start with a byte order mark, and blank lines are skipped.
 function parseCSV(text) {
     const rows = [];
-    const lines = text.trim().split('\n');
+    let row = [];
+    let current = '';
+    let inQuotes = false;
 
-    for (const line of lines) {
-        const row = [];
-        let current = '';
-        let inQuotes = false;
+    function endRow() {
+        row.push(current.trim());
+        if (row.length > 1 || row[0]) rows.push(row);
+        row = [];
+        current = '';
+    }
 
-        for (let i = 0; i < line.length; i++) {
-            const char = line[i];
+    for (let i = text.charCodeAt(0) === 0xFEFF ? 1 : 0; i < text.length; i++) {
+        const char = text[i];
 
-            if (inQuotes) {
-                if (char === '"') {
-                    // Check for escaped quote ("")
-                    if (line[i + 1] === '"') {
-                        current += '"';
-                        i++; // Skip next quote
-                    } else {
-                        inQuotes = false;
-                    }
+        if (inQuotes) {
+            if (char === '"') {
+                // Check for escaped quote ("")
+                if (text[i + 1] === '"') {
+                    current += '"';
+                    i++; // Skip next quote
                 } else {
-                    current += char;
+                    inQuotes = false;
                 }
             } else {
-                if (char === '"') {
-                    inQuotes = true;
-                } else if (char === ',') {
-                    row.push(current.trim());
-                    current = '';
-                } else {
-                    current += char;
-                }
+                current += char;
+            }
+        } else {
+            if (char === '"') {
+                inQuotes = true;
+            } else if (char === ',') {
+                row.push(current.trim());
+                current = '';
+            } else if (char === '\n' || char === '\r') {
+                if (char === '\r' && text[i + 1] === '\n') i++;
+                endRow();
+            } else {
+                current += char;
             }
         }
-        row.push(current.trim()); // Push last field
-        rows.push(row);
     }
+    endRow(); // Push last row when the file lacks a trailing newline
 
     return rows;
 }
@@ -132,13 +139,34 @@ async function searchGradeDistributions(professor) {
 }
 
 // RMP Cache helpers
+// Matched profiles are reused for a day and confirmed misses for two hours.
+function isFreshRMPEntry(cached) {
+    return Date.now() - cached?.timestamp < (cached?.data?.error ? DAY / 12 : DAY);
+}
+
+// Expired entries are otherwise removed only when the same instructor is looked up again,
+// and entries written under an earlier key prefix are never read, so storage would grow without bound.
+async function pruneRMPCache() {
+    try {
+        const entries = await chrome.storage.local.get(null);
+        const staleKeys = Object.keys(entries).filter(key => key.startsWith('rmp_')
+            && (!key.startsWith(RMP_CACHE_PREFIX) || !isFreshRMPEntry(entries[key])));
+        if (staleKeys.length) await chrome.storage.local.remove(staleKeys);
+    } catch (error) {
+        console.warn('Error pruning cache:', error);
+    }
+}
+
+chrome.runtime.onInstalled.addListener(pruneRMPCache);
+chrome.runtime.onStartup.addListener(pruneRMPCache);
+
 async function getRMPFromCache(professorName) {
-    const cacheKey = `rmp_v22_${professorName.toLowerCase()}`;
+    const cacheKey = RMP_CACHE_PREFIX + professorName.toLowerCase();
 
     // Check memory cache first
     if (rmpMemoryCache.has(cacheKey)) {
         const cached = rmpMemoryCache.get(cacheKey);
-        if (Date.now() - cached.timestamp < (cached.data.error ? DAY / 12 : DAY)) {
+        if (isFreshRMPEntry(cached)) {
             console.log(`RMP cache hit (memory): ${professorName}`);
             return cached.data;
         }
@@ -150,7 +178,7 @@ async function getRMPFromCache(professorName) {
         const result = await chrome.storage.local.get(cacheKey);
         if (result[cacheKey]) {
             const cached = result[cacheKey];
-            if (Date.now() - cached.timestamp < (cached.data.error ? DAY / 12 : DAY)) {
+            if (isFreshRMPEntry(cached)) {
                 console.log(`RMP cache hit (storage): ${professorName}`);
                 // Populate memory cache
                 rmpMemoryCache.set(cacheKey, cached);
@@ -167,7 +195,7 @@ async function getRMPFromCache(professorName) {
 }
 
 async function setRMPCache(professorName, data) {
-    const cacheKey = `rmp_v22_${professorName.toLowerCase()}`;
+    const cacheKey = RMP_CACHE_PREFIX + professorName.toLowerCase();
     const cacheEntry = { data, timestamp: Date.now() };
 
     // Set in memory cache
@@ -209,8 +237,10 @@ async function fetchRating(name) {
     const exact = candidates.filter(n => normalizeName(n.firstName+' '+n.lastName) === canonical);
     const matches = exact.length ? exact : candidates.filter(n => {
         const family = normalizeName(n.lastName);
-        const given = canonical.slice(0, -(family.length + 1));
-        return family && canonical.endsWith(' '+family) && given.split(' ')[0] === normalizeName(n.firstName).split(' ')[0];
+        const given = canonical.slice(0, -(family.length + 1)).split(' ');
+        const first = normalizeName(n.firstName).split(' ')[0];
+        // Banner lists some instructors as "Madray, J Russell" while students know them by the middle name.
+        return family && canonical.endsWith(' '+family) && (given[0] === first || (given[0].length === 1 && given[1] === first));
     });
     let result = {error:'No unique matching Clemson profile'};
     if (matches.length === 1) {
