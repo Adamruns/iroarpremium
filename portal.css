@@ -105,8 +105,10 @@ body.iroar-portal-page {
     display: block; width: auto; height: auto; padding: 0; margin: 0; color: inherit;
     overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere;
 }
-.iroar-portal-results { display: none; }
-.iroar-searching .iroar-portal-results { display: block; }
+/* Keep the empty status region rendered so screen readers announce the first result count. */
+.iroar-portal-layout:not(.iroar-searching) .iroar-portal-results {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+}
 .iroar-portal-results p { margin: 0 0 12px; color: #5b4c63; font-weight: 600; }
 .iroar-portal-results a small {
     display: block; margin-top: 3px; color: #695b70; font-size: 13px; font-weight: 450;

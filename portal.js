@@ -1,7 +1,8 @@
 // Keep Bootstrap's role-specific tabs and links as the source of the dashboard.
 (() => {
     const tabs = document.querySelector('#page_body .nav-tabs');
-    const panes = document.querySelector('#page_body .tab-content');
+    // Search results replace the panels inside the tab layout, so panels elsewhere keep the native page.
+    const panes = tabs?.parentElement.querySelector('.tab-content');
     if (!tabs || !panes || !panes.querySelector('.tab-item a[href]') || document.querySelector('.iroar-portal-search')) return;
 
     const layout = tabs.parentElement;
@@ -35,8 +36,19 @@
     function setOrientation() {
         tabs.setAttribute('aria-orientation', desktop.matches ? 'vertical' : 'horizontal');
     }
+    // The mobile tablist scrolls horizontally. Keep keyboard and menu selections in view.
+    function revealTab(tab) {
+        if (desktop.matches || !tab) return;
+        const bounds = tab.getBoundingClientRect();
+        const viewport = tabs.getBoundingClientRect();
+        if (bounds.left < viewport.left) tabs.scrollLeft += bounds.left - viewport.left - 5;
+        else if (bounds.right > viewport.right) tabs.scrollLeft += bounds.right - viewport.right + 5;
+    }
     setOrientation();
-    desktop.addEventListener('change', setOrientation);
+    desktop.addEventListener('change', () => {
+        setOrientation();
+        revealTab(activeTab());
+    });
 
     const results = document.createElement('div');
     results.className = 'iroar-portal-results';
@@ -109,7 +121,16 @@
         if (event.key === 'Escape') {
             event.preventDefault();
             returnToSection();
+            return;
         }
+
+        const links = [...list.querySelectorAll('a')];
+        const index = links.indexOf(document.activeElement);
+        if (index < 0 || (event.key !== 'ArrowDown' && event.key !== 'ArrowUp')) return;
+        event.preventDefault();
+        if (event.key === 'ArrowDown') links[Math.min(index + 1, links.length - 1)].focus();
+        else if (index) links[index - 1].focus();
+        else input.focus();
     });
     tabs.addEventListener('click', event => {
         if (event.target.closest('[data-bs-toggle="tab"]') && input.value) {
@@ -120,13 +141,7 @@
     tabs.addEventListener('shown.bs.tab', event => {
         clearSearch();
         updateHeading(event.target);
-        // The mobile tablist scrolls horizontally. Keep keyboard and menu selections in view.
-        if (!desktop.matches) {
-            const tab = event.target.getBoundingClientRect();
-            const viewport = tabs.getBoundingClientRect();
-            if (tab.left < viewport.left) tabs.scrollLeft += tab.left - viewport.left - 5;
-            else if (tab.right > viewport.right) tabs.scrollLeft += tab.right - viewport.right + 5;
-        }
+        revealTab(event.target);
     });
 
     const appMenu = document.querySelector('#app-nav #navbarSupportedContent');
@@ -152,7 +167,14 @@
         }
         appMenu.append(sections);
     }
-    const searchText = text => text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    // Strip accents so "resume" finds "Résumé".
+    const searchText = text => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    // Students search by task, but grades, billing and registration sit behind Student Self-Service.
+    const TASK_KEYWORDS = [
+        [/student self.?service/i, 'grades gpa transcript tuition billing register registration schedule classes'],
+        [/registration/i, 'register enroll classes']
+    ];
+    const taskKeywords = label => TASK_KEYWORDS.filter(([pattern]) => pattern.test(label)).map(([, words]) => words).join(' ');
     input.addEventListener('input', () => {
         if (!input.value.trim()) {
             clearSearch();
@@ -170,10 +192,12 @@
             const label = original.textContent.trim();
             const section = sectionNames.get(original.closest('.tab-pane')?.id) || '';
             const labelText = searchText(label);
-            const searchable = labelText + ' ' + searchText(section);
+            const searchable = labelText + ' ' + searchText(section + ' ' + taskKeywords(label));
             if (!terms.length || !terms.every(term => searchable.includes(term))) continue;
-            // Keep the first matching section for each destination and put direct label matches first.
-            if (!matches.has(original.href)) matches.set(original.href, {original, label, section, direct:terms.every(term => labelText.includes(term))});
+            // Keep the first matching section for each service and put direct label matches first.
+            // Differently named services can share a destination, so both stay listed.
+            const key = original.href + '\n' + labelText;
+            if (!matches.has(key)) matches.set(key, {original, label, section, direct:terms.every(term => labelText.includes(term))});
         }
         const ranked = [...matches.values()].sort((a,b) => Number(b.direct) - Number(a.direct));
         for (const {original,label,section} of ranked) {
@@ -192,6 +216,6 @@
             list.append(row);
         }
         list.hidden = !matches.size;
-        status.textContent = matches.size ? matches.size+' matching '+(matches.size===1?'service':'services') : 'No matching services. Try a shorter search.';
+        status.textContent = matches.size ? matches.size+' matching '+(matches.size===1?'service':'services') : 'No matching services. Try part of a service name, such as “aid”.';
     });
 })();

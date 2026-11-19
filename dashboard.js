@@ -5,9 +5,16 @@
         ['View Registration', 'My registration', 'View your schedule', '▤'],
         ['View Grades', 'View grades', 'Open academic records', '▥']
     ];
+    // Students search by task ("register", "tuition", "gpa") rather than by Banner's service names.
+    const TASK_KEYWORDS = [
+        [/add\/drop|registration|schedule of classes/i, 'register enroll'],
+        [/billing|student account/i, 'tuition fees bill pay payment'],
+        [/transcript|grades|degree evaluation/i, 'gpa']
+    ];
 
+    // Strip accents so "resume" finds "Résumé".
     function searchable(text) {
-        return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+        return text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
     }
 
     // Banner places billing instructions and contact links inline between lists and line breaks.
@@ -33,8 +40,8 @@
                 <label>Find a service<input type="search" placeholder="Transcript, grades, registration…" autocomplete="off"></label></header>
             <nav class="iroar-shortcuts" aria-label="Frequently used services"></nav>
             <div class="iroar-tools"><h2>All services</h2><label>Category <select><option value="">All categories</option></select></label></div>
-            <div class="iroar-filter-feedback" hidden><p class="iroar-search-status" role="status"></p>
-                <button type="button" class="iroar-clear-filters">Clear filters</button></div>
+            <div class="iroar-filter-feedback iroar-filter-idle"><p class="iroar-search-status" role="status"></p>
+                <button type="button" class="iroar-clear-filters" hidden>Clear filters</button></div>
             <div class="iroar-card-grid"></div>`;
         const grid = dashboard.querySelector('.iroar-card-grid');
         const cards = [];
@@ -78,7 +85,9 @@
 
                 const shortcut = primaryServices.find(([nativeLabel]) => nativeLabel === label);
                 if (shortcut && !shortcutLinks.has(label)) shortcutLinks.set(label, link);
-                rows.push({row, text: searchable([name, row.textContent, ...(shortcut?.slice(1, 3) || [])].join(' '))});
+                const description = [name, row.textContent, ...(shortcut?.slice(1, 3) || [])].join(' ');
+                const keywords = TASK_KEYWORDS.filter(([pattern]) => pattern.test(description)).map(([, words]) => words);
+                rows.push({row, text: searchable([description, ...keywords].join(' '))});
             }
             card.append(title, list);
             category.add(new Option(name, name));
@@ -116,6 +125,7 @@
         const search = dashboard.querySelector('input');
         const feedback = dashboard.querySelector('.iroar-filter-feedback');
         const status = feedback.querySelector('[role=status]');
+        const clearButton = feedback.querySelector('button');
         function filterServices() {
             const query = searchable(search.value);
             const terms = query ? query.split(' ') : [];
@@ -132,13 +142,14 @@
             }
             const filtered = Boolean(search.value.trim() || category.value);
             shortcuts.hidden = filtered;
-            feedback.hidden = !filtered;
+            feedback.classList.toggle('iroar-filter-idle', !filtered);
+            clearButton.hidden = !filtered;
             status.textContent = filtered ? (matches ? matches + (matches === 1 ? ' service found' : ' services found')
                 : 'No services found. Try another keyword or category.') : '';
         }
         search.addEventListener('input', filterServices);
         category.addEventListener('change', filterServices);
-        feedback.querySelector('button').addEventListener('click', () => {
+        clearButton.addEventListener('click', () => {
             search.value = '';
             category.value = '';
             filterServices();

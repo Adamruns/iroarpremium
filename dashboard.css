@@ -50,6 +50,10 @@
     border-radius: 7px; background: white; color: #382540; font: inherit;
 }
 .iroar-filter-feedback { margin-bottom: 10px; padding: 2px 12px; background: #f4f0f6; border-radius: 7px; }
+/* Keep the empty status region rendered so screen readers announce the first result count. */
+.iroar-filter-feedback.iroar-filter-idle {
+    position: absolute; width: 1px; height: 1px; margin: 0; padding: 0; overflow: hidden; clip-path: inset(50%);
+}
 .iroar-search-status { flex: 1 1 200px; margin: 0; color: #46364d; font-size: 15px; }
 .iroar-clear-filters { min-height: 44px; border: 0; background: transparent; color: #57366e; font: inherit; text-decoration: underline; cursor: pointer; }
 .iroar-card-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; }
