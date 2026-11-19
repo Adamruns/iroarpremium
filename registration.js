@@ -3,6 +3,8 @@
 
     const BASE_PATH = '/StudentRegistrationSsb/ssb';
     const PAGE_SIZE = 25;
+    // Rating and grade sorts read every page of a search up to this size so they can rank all of it.
+    const INSIGHT_SORT_MAX_SECTIONS = 100;
     const DEBOUNCE_DELAY = 300;
     const AUTOCOMPLETE_MAX_RESULTS = 20;
 
@@ -32,6 +34,7 @@
     let activeFilters = {};
     let searchSequence = 0;
     let searchQueue = Promise.resolve();
+    let bannerSearchStale = false;
 
     const insightSorts = ['rmpRating', 'rmpDifficulty', 'rmpWTA', 'grades'];
     const sortOptions = {subjectDescription:'Subject',courseNumber:'Course number',courseTitle:'Title',sequenceNumber:'Section',courseReferenceNumber:'CRN',creditHours:'Credits',rmpRating:'Rating',rmpDifficulty:'Difficulty',rmpWTA:'Would take again',grades:'Average A grade'};
@@ -142,18 +145,18 @@
                         <div><input id="irp-query" type="search" placeholder="Course code, title, or CRN" autocomplete="off">
                         <button type="submit">Find classes</button></div></form>
                     <div class="irp-active-filters"></div>
-                    <div class="irp-sort-controls" hidden><span class="irp-sort-scope" hidden>Sorting this page</span><label>Sort sections <select class="irp-sort-by">
+                    <div class="irp-sort-controls" hidden><span class="irp-sort-scope" hidden>Ranked within this page only. Narrow your search to ${INSIGHT_SORT_MAX_SECTIONS} sections or fewer to rank them all.</span><label>Sort sections <select class="irp-sort-by">
                         ${Object.entries(sortOptions).map(([key,label])=>'<option value="'+key+'">'+label+'</option>').join('')}
                         </select></label><button class="irp-sort-order" type="button">Ascending</button></div>
                     <div class="irp-results-container">
                         <div class="irp-empty-state"><strong>Explore this term</strong><span>Try a course code like CPSC 1010, or browse every section.</span><button type="button" class="irp-browse-all">Browse all classes</button></div>
                     </div>
-                    <nav class="irp-pagination"></nav>
+                    <nav class="irp-pagination" aria-label="Result pages"></nav>
                 </main>
             </div>
             <aside class="irp-drawer irp-drawer-closed" id="irp-planner" aria-labelledby="irp-schedule-title" role="dialog" aria-modal="true" inert>
                 <div class="irp-drawer-header"><div><p>Schedule preview</p><h2 id="irp-schedule-title">My week</h2>
-                    <span class="irp-cart-count">0</span> sections · <span class="irp-cart-credits">0 credits</span></div>
+                    <span class="irp-cart-count">0 sections</span> · <span class="irp-cart-credits">0 credits</span></div>
                     <button type="button" class="irp-drawer-close" aria-label="Close schedule">×</button></div>
                 <div class="irp-planner-body">
                     <div class="irp-drawer-conflicts irp-hidden" role="status"></div>
@@ -346,8 +349,10 @@
         const enrolled = section.enrollment || 0;
         const max = section.maximumEnrollment || 0;
         const remaining = section.seatsAvailable ?? (max - enrolled);
+        const waitCount = section.waitCount || 0;
         const colorClass = remaining > 5 ? 'irp-good' : remaining > 0 ? 'irp-medium' : 'irp-poor';
-        return '<span class="' + colorClass + '">' + (remaining > 0 ? escapeHTML(remaining) + ' open' : 'Full') + '</span><small>' + escapeHTML(enrolled) + '/' + escapeHTML(max) + ' enrolled</small>';
+        return '<span class="' + colorClass + '">' + (remaining > 0 ? escapeHTML(remaining) + ' open' : 'Full') + '</span><small>' + escapeHTML(enrolled) + '/' + escapeHTML(max) + ' enrolled'
+            + (waitCount > 0 ? ' · ' + escapeHTML(waitCount) + ' waitlisted' : '') + '</small>';
     }
 
     function renderAddButton(section) {
@@ -429,6 +434,11 @@
             return;
         }
 
+        if (currentSearchResults.length >= totalResults) {
+            paginationContainer.innerHTML = '<span class="irp-page-info">Showing all ' + totalResults + ' results</span>';
+            return;
+        }
+
         const start = currentPage * PAGE_SIZE + 1;
         const end = Math.min((currentPage + 1) * PAGE_SIZE, totalResults);
 
@@ -466,6 +476,32 @@
         }
     }
 
+    // Reloading or updating the extension leaves this page open with a context that can no longer reach background.js.
+    function requestFromBackground(portName, message, fallback, onResponse) {
+        let answered = false;
+
+        function finish(response) {
+            if (answered) return;
+            answered = true;
+            onResponse(response);
+        }
+
+        try {
+            const port = chrome.runtime.connect({ name: portName });
+            port.onMessage.addListener(function (response) {
+                port.disconnect();
+                finish(response);
+            });
+            port.onDisconnect.addListener(function () {
+                void chrome.runtime.lastError;
+                finish(fallback);
+            });
+            port.postMessage(message);
+        } catch {
+            finish(fallback);
+        }
+    }
+
     function loadRMPDataForResults(results) {
         const professors = new Set();
         for (let i = 0; i < results.length; i++) {
@@ -483,14 +519,11 @@
             }
 
             const professorName = normalizeProfessorName(displayName);
-            const port = chrome.runtime.connect({ name: 'professor-rating' });
-            port.postMessage({ professorName: professorName });
-            port.onMessage.addListener(function (teacher) {
+            requestFromBackground('professor-rating', { professorName: professorName }, { error: 'Rating service unavailable' }, function (teacher) {
                 rmpDataMap.set(normalized, teacher);
                 updateRMPCells(normalized);
                 refreshOpenMetrics(normalized, 'ratings');
                 if (insightSorts.includes(sortColumn) && sortColumn !== 'grades') finishInsightSort(rmpDataMap);
-                port.disconnect();
             });
         });
     }
@@ -535,13 +568,14 @@
             const averageD = Math.round(totals.d / count);
             const averageF = Math.round(totals.f / count);
 
-            cell.innerHTML = '<div class="irp-grade-bar" title="A:' + averageA + '% B:' + averageB + '% C:' + averageC + '% D:' + averageD + '% F:' + averageF + '%">'
+            const gradeSummary = 'A:' + averageA + '% B:' + averageB + '% C:' + averageC + '% D:' + averageD + '% F:' + averageF + '%';
+            cell.innerHTML = '<div class="irp-grade-bar" role="img" aria-label="Average grades ' + gradeSummary + '" title="' + gradeSummary + '">'
                 + '<div class="irp-grade-a" style="width:' + averageA + '%"></div>'
                 + '<div class="irp-grade-b" style="width:' + averageB + '%"></div>'
                 + '<div class="irp-grade-c" style="width:' + averageC + '%"></div>'
                 + '<div class="irp-grade-d" style="width:' + averageD + '%"></div>'
                 + '<div class="irp-grade-f" style="width:' + averageF + '%"></div>'
-                + '</div>';
+                + '</div><small aria-hidden="true">' + averageA + '% A</small>';
         }
     }
 
@@ -567,24 +601,22 @@
                 return;
             }
 
-            const port = chrome.runtime.connect({ name: 'grade-distribution' });
-            port.postMessage({ type: 'gradeDistribution', professor: { displayName, firstName: nameParts[0], lastName: nameParts[nameParts.length - 1] } });
-            port.onMessage.addListener(function (response) {
-                if (response.type === 'gradeDistribution') {
-                    gradeDataMap.set(normalized, response.data);
-                    updateGradeCells(normalized);
-                    refreshOpenMetrics(normalized, 'grades');
-                    if (sortColumn === 'grades') finishInsightSort(gradeDataMap);
-                    port.disconnect();
-                }
+            const request = { type: 'gradeDistribution', professor: { displayName, firstName: nameParts[0], lastName: nameParts[nameParts.length - 1] } };
+            requestFromBackground('grade-distribution', request, { type: 'gradeDistribution', data: [] }, function (response) {
+                gradeDataMap.set(normalized, response.data || []);
+                updateGradeCells(normalized);
+                refreshOpenMetrics(normalized, 'grades');
+                if (sortColumn === 'grades') finishInsightSort(gradeDataMap);
             });
         });
     }
 
     function updateSortIndicators() {
         document.querySelector('.irp-sort-controls').hidden = currentSearchResults.length === 0;
-        document.querySelector('.irp-sort-scope').hidden = totalResults <= PAGE_SIZE || !insightSorts.includes(sortColumn);
+        document.querySelector('.irp-sort-scope').hidden = currentSearchResults.length >= totalResults || !insightSorts.includes(sortColumn);
         document.querySelector('.irp-sort-by').value = sortColumn;
+        const table = document.querySelector('.irp-table');
+        if (table) table.dataset.sortColumn = sortColumn;
         document.querySelector('.irp-sort-order').textContent = sortDirection === 'asc' ? 'Ascending' : 'Descending';
         const headers = document.querySelectorAll('.irp-table thead th[data-sort-key]');
         for (let i = 0; i < headers.length; i++) {
@@ -638,19 +670,37 @@
     function chooseSort(key) {
         sortDirection = sortColumn === key ? (sortDirection === 'asc' ? 'desc' : 'asc') : (insightSorts.includes(key) && key !== 'rmpDifficulty' ? 'desc' : 'asc');
         sortColumn = key;
-        if (insightSorts.includes(key)) sortResultsClientSide(key);
+        const canRankAll = currentSearchResults.length < totalResults && totalResults <= INSIGHT_SORT_MAX_SECTIONS;
+        if (insightSorts.includes(key) && !canRankAll) sortResultsClientSide(key);
         else executeSearch(0);
     }
 
-    function fetchDetailHTML(endpoint, term, crn) {
+    function readDetailText(doc) {
+        return doc.body.textContent.trim() || null;
+    }
+
+    // Banner lists corequisites as a table of subject, course number and title.
+    function readCorequisites(doc) {
+        const headers = [...doc.querySelectorAll('th')].map(cell => cell.textContent.trim().toLowerCase());
+        const rows = [...doc.querySelectorAll('tr')].filter(row => row.querySelector('td'));
+        if (!rows.length) return readDetailText(doc);
+
+        return rows.map(function (row) {
+            const cells = [...row.querySelectorAll('td')].map(cell => cell.textContent.trim());
+            const field = name => cells[headers.indexOf(name)] ?? '';
+            const course = (field('subject').split('-')[0] + ' ' + field('course number')).trim();
+            return course ? [course, field('title')].filter(Boolean).join(' · ') : cells.filter(Boolean).join(' ');
+        }).join('\n');
+    }
+
+    function fetchDetailHTML(endpoint, term, crn, readDocument = readDetailText) {
         const url = BASE_PATH + '/searchResults/' + endpoint + '?term=' + term + '&courseReferenceNumber=' + crn;
         return fetch(url).then(function (response) {
             if (!response.ok || response.redirected) throw new Error('Section detail unavailable');
             return response.text();
         }).then(function (html) {
             const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-            return doc.body.textContent.trim() || null;
+            return readDocument(parser.parseFromString(html, 'text/html'));
         });
     }
 
@@ -685,8 +735,11 @@
     function formatLinkedSectionsJSON(data) {
         if (!data || !data.linkedData || data.linkedData.length === 0) return null;
 
+        // Banner can group sections that are taken together into an inner array.
         return data.linkedData.map(function (linked) {
-            return linked.subject + ' ' + linked.courseNumber + '-' + linked.sequenceNumber + ' (CRN: ' + linked.courseReferenceNumber + ')';
+            return [].concat(linked).map(function (section) {
+                return section.subject + ' ' + section.courseNumber + '-' + section.sequenceNumber + ' (CRN: ' + section.courseReferenceNumber + ')';
+            }).join(' + ');
         }).join('\n');
     }
 
@@ -736,6 +789,11 @@
         const normalized = normalizeProfessorName(faculty.displayName).toLowerCase();
         const gradeData = courseGrades(normalized, section);
 
+        if (!gradeDataMap.has(normalized)) {
+            container.insertAdjacentHTML('beforeend', '<p class="irp-text-muted">Loading grade history…</p>');
+            return;
+        }
+
         if (!gradeData || gradeData.length === 0) {
             container.insertAdjacentHTML('beforeend', '<div class="irp-detail-section"><h4>Grade Distribution</h4><p class="irp-text-muted">No published grade history for this course and instructor.</p></div>');
             return;
@@ -750,8 +808,8 @@
         container.insertAdjacentHTML('beforeend',
             '<div class="irp-detail-section">'
             + '<h4>Grade distribution</h4><p>Clemson reports through Spring 2026</p>'
-            + '<select aria-label="Grade report section" class="irp-semester-select" data-chart-id="' + chartId + '">' + optionsHTML + '</select>'
-            + '<div id="' + chartId + '" class="irp-grade-chart"></div>'
+            + '<select aria-label="Grade report section" class="irp-semester-select" data-chart-id="' + escapeHTML(chartId) + '">' + optionsHTML + '</select>'
+            + '<div id="' + escapeHTML(chartId) + '" class="irp-grade-chart"></div>'
             + '</div>'
         );
 
@@ -820,7 +878,7 @@
 
         let reqsHTML = '';
         if (!isEmptyDetail(details.prerequisites)) reqsHTML += '<div class="irp-detail-section"><h4>Prerequisites</h4><p>' + escapeHTML(details.prerequisites) + '</p></div>';
-        if (!isEmptyDetail(details.corequisites)) reqsHTML += '<div class="irp-detail-section"><h4>Corequisites</h4><p>' + escapeHTML(details.corequisites) + '</p></div>';
+        if (!isEmptyDetail(details.corequisites)) reqsHTML += '<div class="irp-detail-section"><h4>Corequisites</h4><p style="white-space:pre-line">' + escapeHTML(details.corequisites) + '</p></div>';
         if (!isEmptyDetail(details.restrictions)) reqsHTML += '<div class="irp-detail-section"><h4>Restrictions</h4><p>' + escapeHTML(details.restrictions) + '</p></div>';
         if (details.linkedSections) reqsHTML += '<div class="irp-detail-section"><h4>Linked Sections</h4><p style="white-space:pre-line">' + escapeHTML(details.linkedSections) + '</p></div>';
         if (details.requirementsUnavailable) reqsHTML += '<p class="irp-text-muted">Some requirements could not be loaded. Check Banner before registering.</p>';
@@ -852,7 +910,7 @@
         Promise.allSettled([
             fetchDetailHTML('getCourseDescription', term, crn),
             fetchDetailHTML('getSectionPrerequisites', term, crn),
-            fetchDetailHTML('getCorequisites', term, crn),
+            fetchDetailHTML('getCorequisites', term, crn, readCorequisites),
             fetchDetailHTML('getRestrictions', term, crn),
             fetchDetailJSON('getFacultyMeetingTimes', term, crn),
             fetchDetailHTML('getFees', term, crn),
@@ -945,6 +1003,12 @@
         if (!result.ok || result.redirected) throw new Error('Search reset unavailable');
     }
 
+    async function fetchSearchResults(params) {
+        const response = await fetch(BASE_PATH+'/searchResults/searchResults?'+params);
+        if (!response.ok) throw new Error('Search unavailable');
+        return response.json();
+    }
+
     async function executeSearch(page = 0) {
         const sequence = ++searchSequence;
         currentPage = page;
@@ -953,14 +1017,25 @@
         showLoadingState();
         document.querySelector('.irp-pagination').replaceChildren();
         const params = buildSearchParams(page);
+        const rankAll = page === 0 && insightSorts.includes(sortColumn);
         // Banner caches each search in the server session. Keep its reset and next read in order.
         const request = searchQueue.then(async () => {
             if (sequence !== searchSequence) return null;
-            if (page === 0) await resetBannerSearch();
+            if (page === 0 || bannerSearchStale) await resetBannerSearch();
+            bannerSearchStale = false;
             if (sequence !== searchSequence) return null;
-            const response = await fetch(BASE_PATH+'/searchResults/searchResults?'+params);
-            if (!response.ok) throw new Error('Search unavailable');
-            return response.json();
+            const data = await fetchSearchResults(params);
+            const total = data?.totalCount ?? data?.sectionsFetchedCount ?? 0;
+            if (rankAll && Array.isArray(data?.data) && total > PAGE_SIZE && total <= INSIGHT_SORT_MAX_SECTIONS) {
+                for (let offset = PAGE_SIZE; offset < total; offset += PAGE_SIZE) {
+                    if (sequence !== searchSequence) return null;
+                    params.set('pageOffset', String(offset));
+                    const nextPage = await fetchSearchResults(params);
+                    if (!Array.isArray(nextPage?.data)) throw new Error('Search unavailable');
+                    data.data = data.data.concat(nextPage.data);
+                }
+            }
+            return data;
         });
         searchQueue = request.catch(() => {});
         try {
@@ -1073,7 +1148,9 @@
         const conflictBox = document.querySelector('.irp-drawer-conflicts');
         conflictBox.classList.toggle('irp-hidden', !conflicts.length);
         const name = item => escapeHTML([item.subject,item.courseNumber].join(' '));
-        conflictBox.innerHTML = conflicts.map(([a,b]) => '<div class="irp-conflict-warning">Time conflict · '+name(cartItems[a])+' and '+name(cartItems[b])+'</div>').join('');
+        // Two sections of one course need their section numbers to be told apart.
+        const sectionName = item => name(item) + (item.sequenceNumber ? '-' + escapeHTML(item.sequenceNumber) : '');
+        conflictBox.innerHTML = conflicts.map(([a,b]) => '<div class="irp-conflict-warning">Time conflict · '+sectionName(cartItems[a])+' and '+sectionName(cartItems[b])+'</div>').join('');
         let schedule = '';
         if (events.length) {
             const start = Math.floor(Math.min(...events.map(e=>e.start))/60);
@@ -1093,13 +1170,14 @@
         }
         if (unscheduled.length) schedule += '<p class="irp-tba">Meeting time to be announced · '+unscheduled.map(escapeHTML).join(', ')+'</p>';
         document.querySelector('.irp-drawer-schedule').innerHTML = schedule;
-        document.querySelector('.irp-cart-count').textContent = cartItems.length;
-        document.querySelector('.irp-cart-credits').textContent = cartItems.reduce((sum,s)=>sum+(Number(s.creditHours ?? s.creditHourLow)||0),0)+' credits';
+        const credits = cartItems.reduce((sum,s)=>sum+(Number(s.creditHours ?? s.creditHourLow)||0),0);
+        document.querySelector('.irp-cart-count').textContent = cartItems.length + (cartItems.length === 1 ? ' section' : ' sections');
+        document.querySelector('.irp-cart-credits').textContent = credits + (credits === 1 ? ' credit' : ' credits');
         document.querySelector('.irp-drawer-courses').innerHTML = cartItems.map((s,i) => {
             const meetings = [...new Set((s.meetingsFaculty || []).filter(entry => entry.meetingTime).map(entry => meetingSummary(entry.meetingTime)))];
             return '<div class="irp-cart-card" style="border-color:'+scheduleColors[i%scheduleColors.length]+'"><div><strong>'+name(s)+'</strong><small>'+escapeHTML(s.courseTitle)+' · CRN '+escapeHTML(s.courseReferenceNumber)+'</small>'
                 + meetings.map(summary => '<small class="irp-card-meeting">'+escapeHTML(summary)+'</small>').join('') + '</div>'
-                + '<button class="irp-cart-remove" type="button" data-crn="'+escapeHTML(s.courseReferenceNumber)+'" aria-label="Remove '+name(s)+'">×</button></div>';
+                + '<button class="irp-cart-remove" type="button" data-crn="'+escapeHTML(s.courseReferenceNumber)+'" aria-label="Remove '+sectionName(s)+'">×</button></div>';
         }).join('') || '<div class="irp-empty-state"><strong>Your week is open</strong><span>Add a section from the search results to preview its meeting times.</span></div>';
         updateAddButtons();
     }
@@ -1258,7 +1336,17 @@
                     searchFromFilters();
                 }
             });
+
+            sidebar.addEventListener('focusout', function (event) {
+                const wrapper = event.target.closest('.irp-autocomplete-wrapper');
+                if (wrapper && event.relatedTarget && !wrapper.contains(event.relatedTarget)) closeAllDropdowns();
+            });
         }
+
+        // On narrow screens the main pane draws the backdrop behind the open filter panel.
+        document.querySelector('.irp-main').addEventListener('click', function (event) {
+            if (event.target === event.currentTarget && document.querySelector('.irp-sidebar-open')) toggleSidebar();
+        });
 
         function searchFromFilters() {
             const unresolved = [...sidebar.querySelectorAll('input[data-endpoint]')].find(input =>
@@ -1282,7 +1370,10 @@
                 const removeButton = event.target.closest('.irp-chip-remove');
 
                 if (removeButton) {
+                    const index = [...activeFiltersContainer.querySelectorAll('.irp-chip-remove')].indexOf(removeButton);
                     clearFilter(removeButton.dataset.key);
+                    const remaining = activeFiltersContainer.querySelectorAll('.irp-chip-remove');
+                    (remaining[Math.min(index, remaining.length - 1)] || document.querySelector('.irp-lookup button')).focus();
                 }
             });
         }
@@ -1294,7 +1385,12 @@
                 const pageButton = event.target.closest('.irp-page-btn');
 
                 if (pageButton) {
-                    executeSearch(parseInt(pageButton.dataset.page, 10));
+                    executeSearch(parseInt(pageButton.dataset.page, 10)).then(function () {
+                        // The pressed button is replaced while the page loads.
+                        if (document.activeElement === document.body) {
+                            document.querySelector('.irp-results-container :is(tbody .irp-title, .irp-retry-btn)')?.focus();
+                        }
+                    });
                 }
             });
         }
@@ -1438,11 +1534,15 @@
         restore.addEventListener('click', () => {
             setPlanner(true);
             app.querySelector('.irp-native').focus();
+            // Leaving for Banner view cancels a pending search before it renders.
+            if (app.querySelector('.irp-results-container .irp-skeleton-row')) executeSearch(currentPage);
         });
         app.querySelector('.irp-native').addEventListener('click', async () => {
             ++searchSequence;
             await searchQueue;
             await resetBannerSearch().catch(() => {});
+            // A search in Banner view replaces the session results that planner pagination reads.
+            bannerSearchStale = true;
             setPlanner(false);
             restore.focus();
         });
