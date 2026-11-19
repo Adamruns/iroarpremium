@@ -2,9 +2,9 @@
 
 A student-built Chrome extension for Clemson iROAR. Search the student directory, compare class sections with Rate My Professors ratings and historical grades, and preview a week of classes before opening registration.
 
-[![Watch the 72-second iROAR Premium showcase](docs/media/showcase-poster.jpg)](https://adamruns.com/iroarpremium/)
+[![Watch the 48-second iROAR Premium tour](docs/media/showcase-poster.jpg)](https://adamruns.com/iroarpremium/)
 
-**[Watch the 72-second before-and-after tour](https://adamruns.com/iroarpremium/)** · [Download the MP4](https://raw.githubusercontent.com/Adamruns/iroarpremium/main/docs/media/iroar-premium.mp4)
+**[Watch the 48-second narrated tour](https://adamruns.com/iroarpremium/)** · [Download the MP4](https://raw.githubusercontent.com/Adamruns/iroarpremium/main/docs/media/iroar-premium.mp4)
 
 ## Install
 
@@ -31,7 +31,7 @@ The live review covered the portal's seven tabs, the student directory's 21 SIS 
 
 See the [page-by-page verification record](docs/verification.md).
 
-The 72-second tour shows the campus dashboard, Student Self-Service, registration home, and Browse Classes before and after the redesign. It closes with Rate My Professors, published grade distributions, and a weekly schedule with a time conflict. Each comparison plays at normal speed with a short animated reveal. The dashboard, registration menu, and original search form use cropped Clemson screens. The sample directory, courses, ratings, grades, and schedule use fictional examples rendered by the extension. The Python renderer generates the transitions and original instrumental score. English captions are available in the player.
+The 48-second narrated tour opens on the campus dashboard before and after the redesign. It then follows one class search: comparing BIOL 1010 sections by Rate My Professors rating, sorting them, opening a section's grade history, and adding it to a weekly schedule that flags a time conflict. The dashboard comparison uses cropped Clemson screens. The planner scenes are the extension's own interface, loaded with fictional courses, instructors, ratings, and grades. The narration, music, and sound effects are generated. English captions are available in the player.
 
 To run the desktop and 390-pixel interaction checks from the repository root:
 
@@ -42,4 +42,4 @@ npx playwright install chromium
 npm run check
 ```
 
-To regenerate the MP4, install FFmpeg plus Python packages Pillow and NumPy, then run `npm run video` from `tools/showcase`. The public registration-menu captures are included. Run `node hub.mjs` to refresh them when the Clemson registration host is reachable.
+`npm run video` from `tools/showcase` still renders the earlier 72-second before-and-after cut, and it overwrites the MP4 and poster in `docs/media`. It needs FFmpeg plus Python packages Pillow and NumPy. The public registration-menu captures are included. Run `node hub.mjs` to refresh them when the Clemson registration host is reachable.
