@@ -2,9 +2,9 @@
 
 A student-built Chrome extension for Clemson iROAR. Search the student directory, compare class sections with instructor ratings and historical grades, and preview a week of classes before opening registration.
 
-[![Watch the 38-second iROAR Premium showcase](docs/media/showcase-poster.jpg)](https://adamruns.github.io/iroarpremium/)
+[![Watch the 38-second iROAR Premium showcase](docs/media/showcase-poster.jpg)](https://adamruns.com/iroarpremium/)
 
-**[Watch the 38-second before-and-after tour](https://adamruns.github.io/iroarpremium/)** · [Download the MP4](https://raw.githubusercontent.com/Adamruns/iroarpremium/main/docs/media/iroar-premium.mp4)
+**[Watch the 38-second before-and-after tour](https://adamruns.com/iroarpremium/)** · [Download the MP4](https://raw.githubusercontent.com/Adamruns/iroarpremium/main/docs/media/iroar-premium.mp4)
 
 ## Install
 
