@@ -1,5 +1,13 @@
 # iROAR Premium verification
 
+## Version 2.4.0 · November 19, 2026
+
+Five code reviews covered the course planner, the rating and grade-history service, the campus dashboard and student directory, Banner navigation, and store readiness. A signed-in walkthrough of the 2.3.2 build covered the portal, the student directory, registration home, Browse Classes, Plan Ahead and View Registration in Spring 2027 at 1440 and 500 pixels. It did not save plans or change enrollment.
+
+The walkthrough found that Plan Ahead's narrow instructor column clipped the rating, that rating sorts ranked only the current page of 25, that Banner's 20-pixel select height clipped the sort menu, that Banner's 600-pixel wordmark scrolled every Banner page sideways below about 676 pixels, and that View Registration had no instructor ratings. Version 2.4.0 fixes each of these. A rating sort now reads every page of a search of up to 100 sections, which is two extra Banner requests for a 54-section search. Common task words such as “register,” “tuition” and “gpa” now find the matching service in the portal and the student directory.
+
+The desktop and 390-pixel fixture checks pass. Additional fixture checks cover background disconnects, stale searches after Banner view, keyboard focus after paging and removing filters, corequisite tables, the narrow instructor cell, View Registration's list view, accent-insensitive service search, and Banner menu current-page detection. Banner header width and the menu fallback were also checked against Clemson's public registration pages at 320 to 1440 pixels. The packaged ZIP has 45 files, loads in Chromium and reads all 75,156 grade rows. A signed-in recheck of 2.4.0 itself is still pending.
+
 ## Version 2.3.2 · November 19, 2026
 
 Restored the project’s original orange paw with the white plus on its purple badge. The icon exports use the artwork in [image.png](../image.png). The toolbar, extensions page, store listing, watch page, and video use sizes derived from the same source.

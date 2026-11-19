@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "IRoar Premium",
-  "version": "2.3.2",
-  "description": "Search Clemson iROAR services and classes, compare grade history and instructor ratings, and preview your weekly schedule.",
+  "name": "iROAR Premium",
+  "version": "2.4.0",
+  "description": "Unofficial student tool: search Clemson iROAR services and classes, compare grade history and ratings, and preview your week.",
   "permissions": [
     "storage"
   ],
