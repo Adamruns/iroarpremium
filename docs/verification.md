@@ -1,5 +1,11 @@
 # iROAR Premium verification
 
+## Version 2.2.2 · November 19, 2026
+
+On the signed-in Clemson dashboard, all seven sections passed layout checks at 1728, 1366, 1024, 820 and 520 CSS pixels. Each service label fit inside its link, the desktop sidebar and service grid stayed side by side, and the document fit the viewport width. Compared all 50 link labels, destinations, targets and ordering, plus the section notes and maintenance alert, with the HTML served by Clemson.
+
+Verified search across sections, selecting the current or another section during a search, arrow-key navigation, the mobile portal menu, Help, and the account dropdown. The browser fixture also exercises the dashboard at 1440 and 390 pixels, including duplicate search results and empty results.
+
 ## Version 2.2.1 · November 19, 2026
 
 On Student Self-Service and Registration, the signed-in top-left Banner Menu opened an empty tree. Same-origin frames showing the native pages without the extension reproduced it on both hosts. The blank left margin of the menu icon also ignored clicks.

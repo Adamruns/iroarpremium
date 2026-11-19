@@ -10,12 +10,12 @@ A student-built Chrome extension for Clemson iROAR. Search the student directory
 
 Install [iROAR Premium from the Chrome Web Store](https://chromewebstore.google.com/detail/iroar-premium/kfiijlenjablmbgdbbidepbljlbjjhpf) in desktop Chrome. Open the [Clemson iROAR portal](https://iroar.app.clemson.edu/dashboard/). Sign in and connect to the campus network or VPN as required. If iROAR was already open, refresh the tab.
 
-To try the exact 2.2.1 build manually, extract the [packaged extension ZIP](https://github.com/Adamruns/iroarpremium/releases/download/v2.2.1/iroar-premium-2.2.1.zip). Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`.
+To try the exact 2.2.2 build manually, extract the [packaged extension ZIP](https://github.com/Adamruns/iroarpremium/releases/download/v2.2.2/iroar-premium-2.2.2.zip). Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select the folder containing `manifest.json`.
 
 ## Use it
 
 - **Banner Menu** in the upper left opens Clemson’s navigation. When Clemson supplies an empty menu, the extension offers the portal, student directory, registration home, class search, Plan Ahead and registration history. Browse Classes has the same destinations under **Menu**.
-- **Find a campus service** searches all seven iROAR portal tabs. **Student Self-Service** adds shortcuts for classes, registration and grades. Search services by name or choose a category. **Show original directory** switches back to Clemson's list.
+- On the desktop iROAR dashboard, use **Portal sections** to switch sections or **Search all campus services** to find links across all seven tabs. **Student Self-Service** adds shortcuts for classes, registration and grades. Search services by name or choose a category. **Show original directory** switches back to Clemson's list.
 - **Registration → Browse Classes** opens the planner after you select a term. Enter a course code, title or CRN in **Find a class**. Open **Filters** on a narrow screen to refine by instructor, subject or meeting details. Select a course title for meeting details, requirements, ratings, and grade history.
 - **Add** places a section in **My schedule** for the current page visit. The preview includes additional labs, weekends, and time conflicts. Leaving or refreshing the page clears it.
 - **Plan Ahead** saves plans through Clemson. **Register for Classes** handles enrollment. Both use Banner's own controls. **Use Banner view** also restores the original class search.

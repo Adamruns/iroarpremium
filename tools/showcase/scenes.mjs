@@ -44,12 +44,28 @@ const emptyBannerMenu = fixture('Registration', `<div id="bannerMenuDiv">
     <a id="bannerMenu" href="#" role="menu" aria-label="Banner Menu">Menu</a>
     <div id="menuContainer" hidden><nav id="menu"><ul id="menuList" role="tree"></ul></nav></div></div>
     <script>bannerMenu.onclick=e=>{e.preventDefault();const open=menuContainer.classList.toggle('show');menuContainer.hidden=!open;}</script>`);
-const portalPage = fixture('iROAR portal', `<nav id="app-nav"><button aria-controls="navbarSupportedContent"
+const campusTile = (title,url) => `<div class="col-md-6 tab-item sm-tab-item"><a href="${url}" target="_blank"><div class="row">
+    <div class="col-2 brand-bg"><i></i></div><div class="col-10 white-bg"><span class="icon-text">${title}</span></div></div></a></div>`;
+const campusSections = [
+    ['Dashboard',[['Student Self-Service','/self-service'],['Campus Library','/library'],['Student Registration','/registration']]],
+    ['Records',[['Student Self-Service','/self-service'],['Academic Records','/records']]]
+];
+const portalPage = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>iROAR portal</title><style>*{box-sizing:border-box}body{margin:0;font:16px Arial,sans-serif}</style></head><body><main><nav id="app-nav"><button aria-controls="navbarSupportedContent"
     aria-expanded="false" onclick="const open=this.getAttribute('aria-expanded')==='false';this.setAttribute('aria-expanded',open);this.nextElementSibling.hidden=!open">Toggle</button>
     <div id="navbarSupportedContent" hidden><ul class="navbar-nav"></ul></div></nav>
-    <section id="page_body"><div class="nav-tabs"><button data-bs-toggle="tab">Dashboard</button>
-    <button data-bs-toggle="tab" onclick="this.classList.add('active')">Records</button></div>
-    <div class="tab-content"><div class="tab-item"><a href="/records">Records</a></div></div></section>`);
+    <section id="page_body"><div id="portal_dashboard"><ul class="nav-tabs" role="tablist">
+    ${campusSections.map(([name],i)=>`<li><button class="nav-link ${i?'':'active'}" role="tab" data-bs-toggle="tab" aria-controls="section-${i}">${name}</button></li>`).join('')}</ul>
+    <div class="tab-content">${campusSections.map(([,links],i)=>`<div class="tab-pane" ${i?'hidden':''} id="section-${i}"><div class="row">
+    <div class="col-lg-3"><div class="card">Campus notice</div><div><img alt="Campus" src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="></div></div>
+    <div class="col-lg-9"><div class="row pane-items">${links.map(([name,url])=>campusTile(name,url)).join('')}</div></div></div></div>`).join('')}</div></div></section>
+    <script>for (const tab of document.querySelectorAll('[role=tab]')) tab.onclick=()=>{
+        for (const other of document.querySelectorAll('[role=tab]')) {
+            other.classList.toggle('active',other===tab);
+            document.getElementById(other.getAttribute('aria-controls')).hidden=other!==tab;
+        }
+        tab.dispatchEvent(new Event('shown.bs.tab',{bubbles:true}));
+    }</script></main></body></html>`;
 const errors = [], unexpected = [];
 const browser = await chromium.launch();
 async function run(width) {
@@ -120,17 +136,37 @@ async function run(width) {
         await planLink.click();
         assert.equal(page.url(),base+'term/termSelection?mode=plan');
 
+        await open(portal);
+        const campusSearch = page.getByRole('searchbox',{name:'Find a campus service'});
+        const campusTabs = page.getByRole('tablist');
+        assert.equal(await campusTabs.getAttribute('aria-orientation'), narrow ? 'horizontal' : 'vertical');
+        assert.equal(await page.locator('.iroar-portal-search').getByRole('heading',{level:1}).innerText(),'Dashboard');
+        await noOverflow();
+        if (!narrow) {
+            const sidebar = await campusTabs.boundingBox();
+            const services = await page.locator('#section-0 .pane-items').boundingBox();
+            assert(sidebar.x+sidebar.width < services.x);
+            assert.equal(await page.locator('#section-0 .pane-items').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length),3);
+        }
+        await campusSearch.fill('Student');
+        assert.equal(await page.locator('.iroar-portal-results a').count(),2);
+        assert.equal(await page.locator('.iroar-portal-results a').first().getAttribute('target'),'_blank');
+        await campusSearch.fill('missing');
+        assert.match(await page.getByRole('status').innerText(),/No matching services/);
         if (narrow) {
-            await open(portal);
-            await page.getByRole('searchbox').fill('missing');
             await page.getByRole('button',{name:'Portal navigation'}).click();
             await page.locator('.iroar-portal-sections').getByRole('button',{name:'Records'}).click();
-            assert.equal(await page.getByRole('searchbox').inputValue(),'');
             assert(await page.locator('.nav-tabs .active').evaluate(el=>el===document.activeElement));
             await page.getByRole('button',{name:'Portal navigation'}).click();
             await page.locator('#navbarSupportedContent .navbar-nav').evaluate(ul=>{const a=document.createElement('a');a.href='/native';a.textContent='Role menu';ul.append(a);});
             assert(await page.locator('.iroar-portal-sections').isHidden());
+        } else {
+            await page.getByRole('tab',{name:'Records',exact:true}).click();
         }
+        assert.equal(await campusSearch.inputValue(),'');
+        assert.equal(await page.locator('.iroar-portal-search').getByRole('heading',{level:1}).innerText(),'Records');
+        assert(await page.locator('#section-1 .card').isVisible());
+        assert.equal(await page.getByRole('link',{name:'Academic Records'}).getAttribute('href'),'/records');
         await open(dashboard);
         assert.equal(await page.locator('.iroar-service-card a').count(),14);
         await noOverflow();

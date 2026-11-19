@@ -1,39 +1,168 @@
-/* The student portal uses Bootstrap tabs. Keep its tab controls and destinations intact. */
-#page_body:has(.pane-items) { background: #f7f6f9; color: #2d2137; }
-#page_body .nav-tabs:has(+ .tab-content) { gap: 4px; padding: 6px; background: #eae5ef; border: 0; border-radius: 14px; }
-#page_body .nav-tabs .nav-link { border: 0; border-radius: 10px; color: #453451 !important; background: transparent !important; font-weight: 600; }
-#page_body .nav-tabs .nav-link.active { background: #43295c !important; color: white !important; }
-#page_body .pane-items { row-gap: 10px; }
-#page_body .tab-item > a { display: block; height: 100%; border: 1px solid #ddd7e2; background: white; border-radius: 12px; padding: 8px 10px; color: #33253e; text-decoration: none; }
-#page_body .tab-item > a:hover { border-color: #ad90bd; background: #fcfaff; }
-#page_body .tab-item > a > .row { margin: 0; height: 100%; align-items: center; }
-#page_body .tab-item .brand-bg { background: #f2eaf7 !important; color: #59396d; border-radius: 8px; }
-#page_body .tab-item .brand-bg i { color: #59396d !important; }
-#page_body .tab-item .white-bg { background: transparent !important; }
-#page_body .tab-item .icon-text { white-space: normal; font-weight: 600; line-height: 1.35; }
-@media(max-width: 700px) {
-    #page_body .nav-tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
-    #page_body .nav-tabs .nav-link { width: 100%; min-height: 44px; }
-    #page_body .tab-item { margin: 0; }
+body.iroar-portal-page {
+    --portal-ink: #302338;
+    --portal-accent: #59336c;
+    --portal-line: #e1dce3;
+    --portal-gutter: clamp(16px, 3vw, 44px);
+    --portal-shell: 1264px;
+    color: var(--portal-ink);
+    margin-bottom: 0 !important;
 }
-#page_body .iroar-portal-search { margin: 12px 0 20px; padding: clamp(18px,3vw,32px); border-radius: 15px; background: #30213e; color: white; border-left: 5px solid #ff8745; }
-.iroar-portal-search label { display: block; margin: 0 0 10px; color: white; font-size: clamp(20px,3vw,30px); font-weight: 700; letter-spacing: -.03em; }
-.iroar-portal-search input { display: block; width: min(100%,520px); padding: 10px 14px; min-height: 44px; font: inherit; color: #2e2435; background: white; border: none; border-radius: 8px; }
-.iroar-portal-search p { margin: 12px 0 0; color: #f1e8f4; }
-.iroar-portal-search p:empty { display:none; }
-.iroar-portal-search ul { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr)); gap:8px; margin:12px 0 0; padding:0; list-style:none; }
-.iroar-portal-search li a { display:block; height:100%; color:#32213e; background:#fff; border-radius:8px; padding:12px; text-decoration:none; }
-.iroar-portal-search li a:hover {text-decoration:underline;}
-#page_body :is(.nav-tabs,.tab-content,.iroar-portal-search ul)[hidden] {display:none!important;}
+.iroar-portal-page #page_body {
+    width: 100%; max-width: var(--portal-shell); margin: 0 auto;
+    padding: 18px var(--portal-gutter) 32px !important;
+}
+.iroar-portal-page, .iroar-portal-page #page_body { background: #f7f6f8; }
+.iroar-portal-layout { display: grid; align-items: start; gap: 12px; min-width: 0; }
+.iroar-portal-layout > * { min-width: 0; }
+.iroar-portal-layout :is(.tab-content, .iroar-portal-photo, .iroar-portal-results ul)[hidden] { display: none !important; }
+.iroar-portal-layout :is(a,button,input):focus-visible,
+.iroar-portal-page #starter-nav :is(a,button):focus-visible { outline: 3px solid #b85d15; outline-offset: 2px; }
 
-/* The portal renders a second navbar even when a role has no application menu. */
+.iroar-portal-search {
+    position: relative; isolation: isolate; overflow: hidden; margin: 0; border-radius: 14px;
+    color: #fff; background: #34233e;
+}
+.iroar-portal-heading { position: relative; z-index: 1; padding: 20px; }
+.iroar-portal-heading h1 {
+    margin: 0 0 12px; color: #fff; font-size: clamp(26px, 3vw, 40px);
+    line-height: 1.12; font-weight: 650; letter-spacing: -.04em;
+}
+.iroar-portal-field {
+    display: flex; width: min(100%, 430px); align-items: center; gap: 10px; margin: 0;
+    padding-inline: 12px; border-radius: 7px; background: #fff; color: #6a5972;
+}
+.iroar-portal-field:focus-within { outline: 3px solid #ffb580; outline-offset: 2px; }
+.iroar-portal-field input[type=search] {
+    width: 100%; min-width: 0; height: 44px; padding: 8px 0; margin: 0; border: 0;
+    background: transparent; color: #302338; font: inherit; outline: none;
+}
+.iroar-portal-field input::placeholder { color: #6f6573; opacity: 1; }
+.iroar-portal-photo { display: none; }
+.iroar-portal-sidebar h2 { display: none; }
+.iroar-portal-sidebar .nav-tabs {
+    display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 4px; margin: 0;
+    padding: 5px; list-style: none; border: 0; border-radius: 10px; background: #ece8ee;
+}
+.iroar-portal-sidebar .nav-tabs .nav-link {
+    width: 100%; height: 100%; min-height: 44px; margin: 0; padding: 8px;
+    border: 0; border-radius: 6px; text-align: left; white-space: normal;
+    background: transparent !important; color: #4c4053 !important; font-size: 14px; line-height: 1.35; font-weight: 570;
+}
+.iroar-portal-sidebar .nav-tabs .nav-link:hover { background: #f5f0f7 !important; }
+.iroar-portal-sidebar .nav-tabs .nav-link.active { color: #fff !important; background: #4a2d5a !important; }
+.iroar-portal-layout .tab-content { margin: 0 !important; padding: 0; }
+.iroar-portal-layout .tab-pane > .row { display: grid; gap: 12px; margin: 0; }
+.iroar-portal-layout .tab-pane > .row > :is(.col-lg-3,.col-lg-9) { width: 100%; min-width: 0; margin: 0; padding: 0; }
+.iroar-portal-layout .iroar-pane-photo,
+.iroar-portal-layout .tab-pane > .row > .col-lg-3:has(> .iroar-pane-photo:only-child) { display: none !important; }
+.iroar-portal-layout .tab-pane .col-lg-3 > .card {
+    display: block; margin: 0 !important; padding: 11px 15px !important; border: 1px solid #d8cedf;
+    border-inline-start: 3px solid #98769f; border-radius: 7px; background: #f4f0f6; color: #493a51; font-size: 14px;
+}
+.iroar-portal-layout .col-lg-3 > .card p { margin: 0; }
+.iroar-portal-layout .col-lg-3 > .card p + p { margin-top: 3px; }
+.iroar-portal-layout .pane-items, .iroar-portal-results ul {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr));
+    align-items: stretch; gap: 10px; margin: 0; padding: 0; list-style: none;
+}
+.iroar-portal-layout .pane-items > .tab-item {
+    width: auto; min-width: 0; height: auto; max-width: none; padding: 0; margin: 0;
+}
+.iroar-portal-layout .tab-item > a, .iroar-portal-results li > a {
+    display: flex; gap: 6px; align-items: center; justify-content: space-between;
+    width: 100%; min-width: 0; height: 100%; min-height: 70px; margin: 0; padding: 12px 14px;
+    border: 1px solid var(--portal-line); border-radius: 9px; background: #fff; color: var(--portal-ink); text-decoration: none;
+}
+.iroar-portal-layout .tab-item > a:is(:hover,:focus-visible), .iroar-portal-results li > a:is(:hover,:focus-visible) {
+    background: #fcfafd; border-color: #a58aaf; color: var(--portal-accent); text-decoration: underline;
+}
+.iroar-portal-layout .tab-item > a[target="_blank"]::after, .iroar-portal-results a[target="_blank"]::after {
+    content: ""; flex: 0 0 12px; width: 12px; height: 12px; background: #84788a;
+    clip-path: polygon(25% 10%,90% 10%,90% 75%,77% 75%,77% 33%,18% 92%,8% 82%,67% 23%,25% 23%);
+}
+.iroar-portal-layout .tab-item > a > .row {
+    flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; gap: 12px; align-items: center; height: auto; margin: 0;
+}
+.iroar-portal-layout .tab-item .brand-bg {
+    flex: 0 0 40px; display: grid; place-items: center; width: 40px; height: 40px;
+    margin: 0; padding: 0; border: 0 !important; border-radius: 9px; background: #f0eaf3 !important;
+}
+.iroar-portal-layout .tab-item .brand-bg i { color: #62426e !important; font-size: 21px; line-height: 1; margin: 0; }
+.iroar-portal-layout .tab-item .white-bg {
+    display: block; flex: 1; width: auto; min-width: 0; height: auto; padding: 0; margin: 0;
+    border: 0 !important; border-radius: 0; background: transparent !important;
+}
+.iroar-portal-layout .tab-item .icon-text, .iroar-portal-results li a {
+    font-size: 15px; font-weight: 620; line-height: 1.35; text-align: left;
+}
+.iroar-portal-layout .tab-item .icon-text {
+    display: block; width: auto; height: auto; padding: 0; margin: 0; color: inherit;
+    overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere;
+}
+.iroar-portal-results { display: none; }
+.iroar-searching .iroar-portal-results { display: block; }
+.iroar-portal-results p { margin: 0 0 12px; color: #5b4c63; font-weight: 600; }
+.iroar-portal-page footer.footer { position: static !important; margin-top: auto; height: auto; }
+
 #app-nav .iroar-portal-sections { display: none; }
 @media (max-width: 991.98px) {
+    .iroar-searching .iroar-portal-sidebar { display: none; }
     #app-nav #navbarSupportedContent:not(:has(.navbar-nav :is(a,button,[role="menuitem"]))) .iroar-portal-sections {
         display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 4px; padding-block: 8px;
     }
     .iroar-portal-sections button {
         min-height: 44px; padding: 8px 12px; border: 0; border-radius: 5px; background: #fff;
         color: #412456; text-align: left; font: inherit;
+    }
+    .iroar-portal-wordmark { display: none; }
+}
+
+@media (min-width: 992px) {
+    body.iroar-portal-page { display: flex; flex-direction: column; min-height: 100vh; margin: 0; padding: 0; }
+    .iroar-portal-page main { flex: 1; }
+    .iroar-portal-page #starter-nav {
+        position: relative; min-height: 60px; padding-block: 6px; background: #302038 !important;
+        border-bottom: 3px solid #f1874c;
+    }
+    .iroar-portal-page #starter-nav > .container-fluid {
+        max-width: var(--portal-shell); margin: auto; padding-inline: var(--portal-gutter);
+    }
+    .iroar-portal-branded #header-bg { display: none; }
+    .iroar-portal-branded #starter-nav .navbar-brand { margin: 0; padding: 5px 0; }
+    .iroar-portal-wordmark { display: block; width: 216px; max-height: 38px; object-fit: contain; }
+    .iroar-portal-branded #starter-nav .navbar-brand > span {
+        display: block; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%);
+    }
+    .iroar-portal-page #starter-nav a[title="Help"] span { display: inline !important; }
+    .iroar-portal-page #app-nav:has(#navbarSupportedContent):not(:has(.navbar-nav :is(a,button,[role="menuitem"]))) { display: none; }
+    .iroar-portal-page .notification-banner {
+        width: calc(100% - 2 * var(--portal-gutter)); max-width: calc(var(--portal-shell) - 2 * var(--portal-gutter));
+        margin: 14px auto 0; padding: 10px 15px; line-height: 1.45; font-size: 14px; border-radius: 7px;
+    }
+    .iroar-portal-page .notification-banner.alert-danger {
+        background: #fff3ec; border: 1px solid #ebc6b4; border-inline-start: 4px solid #aa4a18; color: #693114;
+    }
+    .iroar-portal-page #page_body { padding-block: 20px 32px !important; }
+    .iroar-portal-layout {
+        grid-template-columns: 214px minmax(0,1fr); grid-template-areas: "hero hero" "sidebar services";
+        gap: 20px 24px;
+    }
+    .iroar-portal-search { grid-area: hero; background: linear-gradient(100deg, #392741, #4e3958); }
+    .iroar-portal-heading { width: 62%; padding: 24px 30px; }
+    .iroar-portal-heading h1 { margin-bottom: 14px; }
+    .iroar-portal-photo:not([hidden]) {
+        display: block; position: absolute; z-index: -1; inset: 0 0 0 auto; width: 43%; height: 100%;
+        object-fit: cover; object-position: center 43%; mask-image: linear-gradient(90deg, transparent, #000 32%);
+    }
+    .iroar-portal-sidebar { grid-area: sidebar; padding: 15px 8px 9px; border: 1px solid var(--portal-line); border-radius: 9px; background: #fff; }
+    .iroar-portal-sidebar h2 {
+        display: block; margin: 0 10px 9px; color: #69586f; font-size: 13px; font-weight: 650; line-height: 1.4;
+    }
+    .iroar-portal-sidebar .nav-tabs { grid-template-columns: minmax(0,1fr); padding: 0; gap: 2px; background: none; }
+    .iroar-portal-sidebar .nav-tabs .nav-link { min-height: 41px; padding: 8px 11px; }
+    .iroar-portal-layout > .tab-content, .iroar-portal-results { grid-area: services; }
+    .iroar-portal-page footer.footer {
+        padding: 10px var(--portal-gutter); border-block-start: 1px solid var(--portal-line); background: #fff;
+        font-size: 13px; line-height: 1.5;
     }
 }
