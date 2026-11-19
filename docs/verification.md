@@ -1,5 +1,9 @@
 # iROAR Premium verification
 
+## Version 2.3.2 · November 19, 2026
+
+Restored the project’s original orange paw with the white plus on its purple badge. The icon exports use the artwork in [image.png](../image.png). The toolbar, extensions page, store listing, watch page, and video use sizes derived from the same source.
+
 ## Version 2.3.1 · November 19, 2026
 
 Checked the tiger icon at 16, 32, 48, 96, and 128 pixels on light and dark backgrounds. The 128-pixel store icon has 16 pixels of transparent padding on each side. Verified each manifest icon against the packaged PNG, reran the desktop and phone checks, and decoded the full 72-second tour with its new logo.
