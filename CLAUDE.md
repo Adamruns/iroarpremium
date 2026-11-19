@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-IRoar Premium is a Chrome extension (Manifest V3) that enhances Clemson University's course registration page by displaying Rate My Professors ratings and historical grade distribution data for each professor.
+iROAR Premium is a Chrome extension (Manifest V3) that enhances Clemson University's course registration page by displaying Rate My Professors ratings and historical grade distribution data for each professor.
 
 ## Development Setup
 

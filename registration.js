@@ -113,7 +113,7 @@
                         </svg>
                         <span>Filters</span>
                     </button>
-                    <a href="https://sadv.sis.clemson.edu/StudentSelfService/ssb/studentCommonDashboard" class="irp-brand">IRoar <span class="irp-brand-premium">Premium</span></a>
+                    <a href="https://sadv.sis.clemson.edu/StudentSelfService/ssb/studentCommonDashboard" class="irp-brand">iROAR <span class="irp-brand-premium">Premium</span></a>
                 </div>
                 <div class="irp-topbar-center">
                     <span class="irp-term-display"></span>
@@ -1251,7 +1251,7 @@
                     showAutocompleteResults(dropdown, results, filterKey);
                 }
             }).catch(function (error) {
-                console.warn('[IRoar Premium] Autocomplete error:', error);
+                console.warn('[iROAR Premium] Autocomplete error:', error);
                 if (sequence === autocompleteSequence) dropdown.classList.add('irp-hidden');
             }).finally(() => {
                 if (sequence === autocompleteSequence) input.parentElement.removeAttribute('aria-busy');
